@@ -1,5 +1,7 @@
+mod db;
 mod parser;
 
+use std::env;
 use std::io::{self, Read};
 use std::time::Duration;
 
@@ -65,17 +67,123 @@ fn calculate_widths(data: &TableData) -> Vec<Constraint> {
         .collect()
 }
 
-fn main() -> io::Result<()> {
-    // Read and parse stdin before initializing TUI
-    let mut input = String::new();
-    io::stdin().read_to_string(&mut input)?;
+/// Print usage information and exit.
+fn print_usage() {
+    eprintln!("Usage: pretty-table-explorer [OPTIONS]");
+    eprintln!("       cat data.txt | pretty-table-explorer");
+    eprintln!();
+    eprintln!("Options:");
+    eprintln!("  --connect <CONN_STRING>  Connect to PostgreSQL database");
+    eprintln!("  --query <SQL>            SQL query to execute (default: show tables)");
+    eprintln!();
+    eprintln!("Connection string formats:");
+    eprintln!("  \"host=localhost user=postgres dbname=mydb\"");
+    eprintln!("  \"postgresql://user:pass@host/db\"");
+    std::process::exit(1);
+}
 
-    let table_data = match parser::parse_psql(&input) {
-        Some(data) => data,
-        None => {
-            eprintln!("Error: Invalid or empty input. Expected psql table format.");
-            eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
-            std::process::exit(1);
+/// Parse command-line arguments.
+/// Returns (connection_string, query) if --connect is provided.
+fn parse_args() -> Option<(String, String)> {
+    let args: Vec<String> = env::args().collect();
+    let mut connection_string: Option<String> = None;
+    let mut query: Option<String> = None;
+
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--connect" => {
+                if i + 1 >= args.len() {
+                    eprintln!("Error: --connect requires a connection string argument");
+                    print_usage();
+                }
+                connection_string = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--query" => {
+                if i + 1 >= args.len() {
+                    eprintln!("Error: --query requires a SQL query argument");
+                    print_usage();
+                }
+                query = Some(args[i + 1].clone());
+                i += 2;
+            }
+            "--help" | "-h" => {
+                print_usage();
+            }
+            _ => {
+                eprintln!("Error: Unknown argument: {}", args[i]);
+                print_usage();
+            }
+        }
+    }
+
+    // If --connect provided, return connection info with default query
+    connection_string.map(|conn| {
+        let default_query =
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' LIMIT 20"
+                .to_string();
+        (conn, query.unwrap_or(default_query))
+    })
+}
+
+fn main() -> io::Result<()> {
+    // Parse CLI arguments
+    let db_config = parse_args();
+
+    // Get table data from either database or stdin
+    let table_data = if let Some((conn_string, query)) = db_config {
+        // Direct database connection mode
+        match db::connect(&conn_string) {
+            Ok(mut client) => match db::execute_query(&mut client, &query) {
+                Ok(data) => {
+                    if data.headers.is_empty() && data.rows.is_empty() {
+                        eprintln!("Query returned no results.");
+                        std::process::exit(0);
+                    }
+                    data
+                }
+                Err(e) => {
+                    eprintln!("Error: Query failed: {}", e);
+                    std::process::exit(1);
+                }
+            },
+            Err(e) => {
+                // Provide helpful error messages for common connection issues
+                let err_msg = e.to_string();
+                if err_msg.contains("Connection refused") {
+                    eprintln!(
+                        "Error: Could not connect to PostgreSQL at specified host."
+                    );
+                    eprintln!("Make sure PostgreSQL is running and accepting connections.");
+                } else if err_msg.contains("authentication") || err_msg.contains("password") {
+                    eprintln!("Error: Authentication failed for PostgreSQL connection.");
+                    eprintln!("Check your username and password.");
+                } else {
+                    eprintln!("Error: Failed to connect to database: {}", e);
+                }
+                std::process::exit(1);
+            }
+        }
+    } else {
+        // Stdin mode - check if stdin has data
+        use std::io::IsTerminal;
+        if io::stdin().is_terminal() {
+            // No piped input and no --connect flag
+            print_usage();
+        }
+
+        // Read and parse stdin
+        let mut input = String::new();
+        io::stdin().read_to_string(&mut input)?;
+
+        match parser::parse_psql(&input) {
+            Some(data) => data,
+            None => {
+                eprintln!("Error: Invalid or empty input. Expected psql table format.");
+                eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
+                std::process::exit(1);
+            }
         }
     };
 
