@@ -118,7 +118,7 @@ fn main() -> io::Result<()> {
                 .header(header_row)
                 .block(
                     Block::default()
-                        .title(" Pretty Table Explorer - Press 'q' to quit ")
+                        .title(" Pretty Table Explorer - hjkl/arrows: navigate, q: quit ")
                         .borders(Borders::ALL),
                 )
                 .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
@@ -130,12 +130,24 @@ fn main() -> io::Result<()> {
         // Poll with 250ms timeout for responsive feel
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
-                // Quit on 'q' or Ctrl+C
-                if key.code == KeyCode::Char('q')
-                    || (key.modifiers.contains(KeyModifiers::CONTROL)
-                        && key.code == KeyCode::Char('c'))
-                {
-                    break;
+                match key.code {
+                    // Quit on 'q' or Ctrl+C
+                    KeyCode::Char('q') => break,
+                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => break,
+
+                    // Vertical navigation
+                    KeyCode::Char('j') | KeyCode::Down => table_state.select_next(),
+                    KeyCode::Char('k') | KeyCode::Up => table_state.select_previous(),
+
+                    // Jump to first/last
+                    KeyCode::Char('g') | KeyCode::Home => table_state.select_first(),
+                    KeyCode::Char('G') | KeyCode::End => table_state.select_last(),
+
+                    // Horizontal column navigation
+                    KeyCode::Char('h') | KeyCode::Left => table_state.select_previous_column(),
+                    KeyCode::Char('l') | KeyCode::Right => table_state.select_next_column(),
+
+                    _ => {}
                 }
             }
         }
