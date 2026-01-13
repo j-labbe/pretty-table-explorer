@@ -373,7 +373,7 @@ fn main() -> io::Result<()> {
                         }
                     }
 
-                    AppMode::QueryInput | AppMode::SearchInput => {
+                    AppMode::QueryInput => {
                         match key.code {
                             // Cancel and return to normal mode
                             KeyCode::Esc => {
@@ -381,9 +381,62 @@ fn main() -> io::Result<()> {
                                 input_buffer.clear();
                             }
 
-                            // Execute action and return to normal mode
+                            // Execute query and return to normal mode
                             KeyCode::Enter => {
-                                // Action will be implemented in Task 2 and 3
+                                if let Some(ref mut client) = db_client {
+                                    // Execute query via database client
+                                    let query = input_buffer.trim();
+                                    if !query.is_empty() {
+                                        match db::execute_query(client, query) {
+                                            Ok(data) => {
+                                                if data.headers.is_empty() && data.rows.is_empty() {
+                                                    status_message = Some("Query returned no results".to_string());
+                                                } else {
+                                                    // Update table data and recalculate widths
+                                                    table_data = data;
+                                                    widths = calculate_widths(&table_data);
+                                                    table_state = TableState::default().with_selected(Some(0));
+                                                    filter_text.clear(); // Clear filter when new data loaded
+                                                }
+                                            }
+                                            Err(e) => {
+                                                status_message = Some(format!("Error: {}", e));
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // Not in database mode
+                                    status_message = Some("Query mode requires --connect".to_string());
+                                }
+                                current_mode = AppMode::Normal;
+                                input_buffer.clear();
+                            }
+
+                            // Text input
+                            KeyCode::Char(c) => {
+                                input_buffer.push(c);
+                            }
+
+                            // Backspace
+                            KeyCode::Backspace => {
+                                input_buffer.pop();
+                            }
+
+                            _ => {}
+                        }
+                    }
+
+                    AppMode::SearchInput => {
+                        match key.code {
+                            // Cancel and return to normal mode
+                            KeyCode::Esc => {
+                                current_mode = AppMode::Normal;
+                                input_buffer.clear();
+                            }
+
+                            // Apply filter and return to normal mode
+                            KeyCode::Enter => {
+                                // Filter will be implemented in Task 3
                                 current_mode = AppMode::Normal;
                                 input_buffer.clear();
                             }
