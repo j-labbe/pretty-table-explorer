@@ -3,8 +3,6 @@ mod parser;
 use std::io::{self, Read};
 use std::time::Duration;
 
-// TableData will be used for rendering in 02-02
-#[allow(unused_imports)]
 use parser::TableData;
 
 use crossterm::{
@@ -14,7 +12,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
+    widgets::{Block, Borders, Cell, Row, Table},
 };
 
 /// Initialize the terminal for TUI rendering.
@@ -42,7 +40,7 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io
 
 /// Calculate column widths from table data.
 /// Returns a Constraint for each column sized to fit the maximum content width.
-fn calculate_widths(data: &parser::TableData) -> Vec<Constraint> {
+fn calculate_widths(data: &TableData) -> Vec<Constraint> {
     let num_cols = data.headers.len();
     let mut widths = vec![0usize; num_cols];
 
@@ -72,8 +70,7 @@ fn main() -> io::Result<()> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
 
-    // table_data will be used for rendering in 02-02
-    let _table_data = match parser::parse_psql(&input) {
+    let table_data = match parser::parse_psql(&input) {
         Some(data) => data,
         None => {
             eprintln!("Error: Invalid or empty input. Expected psql table format.");
@@ -82,12 +79,8 @@ fn main() -> io::Result<()> {
         }
     };
 
-    // Print parsing summary (temporary - will be replaced by table rendering in 02-02)
-    eprintln!(
-        "Parsed table: {} columns, {} rows",
-        _table_data.column_count(),
-        _table_data.row_count()
-    );
+    // Calculate column widths once before entering the render loop
+    let widths = calculate_widths(&table_data);
 
     // Set up panic hook to restore terminal on crash
     let original_hook = std::panic::take_hook();
@@ -104,32 +97,29 @@ fn main() -> io::Result<()> {
         terminal.draw(|frame| {
             let area = frame.area();
 
-            // Create centered layout
-            let vertical = Layout::vertical([
-                Constraint::Fill(1),
-                Constraint::Length(5),
-                Constraint::Fill(1),
-            ])
-            .split(area);
+            // Create header row with bold style
+            let header_cells = table_data
+                .headers
+                .iter()
+                .map(|h| Cell::from(h.as_str()).style(Style::default().add_modifier(Modifier::BOLD)));
+            let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
 
-            let horizontal = Layout::horizontal([
-                Constraint::Fill(1),
-                Constraint::Length(40),
-                Constraint::Fill(1),
-            ])
-            .split(vertical[1]);
+            // Create data rows
+            let data_rows = table_data.rows.iter().map(|row| {
+                let cells = row.iter().map(|c| Cell::from(c.as_str()));
+                Row::new(cells)
+            });
 
-            // Create block with title and borders
-            let block = Block::default()
-                .title(" Pretty Table Explorer ")
-                .borders(Borders::ALL);
+            // Build table with calculated widths
+            let table = Table::new(data_rows, widths.clone())
+                .header(header_row)
+                .block(
+                    Block::default()
+                        .title(" Pretty Table Explorer - Press 'q' to quit ")
+                        .borders(Borders::ALL),
+                );
 
-            // Create paragraph with quit instruction
-            let paragraph = Paragraph::new("Press 'q' to quit")
-                .block(block)
-                .alignment(Alignment::Center);
-
-            frame.render_widget(paragraph, horizontal[1]);
+            frame.render_widget(table, area);
         })?;
 
         // Poll with 250ms timeout for responsive feel
