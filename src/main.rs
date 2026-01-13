@@ -101,13 +101,25 @@ fn main() -> io::Result<()> {
             let area = frame.area();
 
             // Create dynamic title showing position
-            let position_info = match table_state.selected() {
-                Some(idx) => format!(" Row {}/{} ", idx + 1, table_data.rows.len()),
-                None => String::new(),
+            let row_info = table_state
+                .selected()
+                .map(|r| format!("Row {}/{}", r + 1, table_data.rows.len()))
+                .unwrap_or_default();
+
+            let col_info = table_state
+                .selected_column()
+                .map(|c| format!(" Col {}/{}", c + 1, table_data.headers.len()))
+                .unwrap_or_default();
+
+            let position = if row_info.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}{}] ", row_info, col_info)
             };
+
             let title = format!(
-                " Pretty Table Explorer{}- hjkl: nav, Ctrl+U/D: page, q: quit ",
-                position_info
+                " Pretty Table Explorer{}- hjkl: nav, q: quit ",
+                position
             );
 
             // Create header row with bold style
@@ -132,6 +144,7 @@ fn main() -> io::Result<()> {
                         .borders(Borders::ALL),
                 )
                 .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+                .column_highlight_style(Style::default().fg(Color::Cyan))
                 .highlight_symbol(">> ");
 
             frame.render_stateful_widget(table, area, &mut table_state);
