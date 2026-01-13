@@ -14,7 +14,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
 
 /// Initialize the terminal for TUI rendering.
@@ -38,6 +38,33 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io
     )?;
     terminal.show_cursor()?;
     Ok(())
+}
+
+/// Calculate column widths from table data.
+/// Returns a Constraint for each column sized to fit the maximum content width.
+fn calculate_widths(data: &parser::TableData) -> Vec<Constraint> {
+    let num_cols = data.headers.len();
+    let mut widths = vec![0usize; num_cols];
+
+    // Check header widths
+    for (i, header) in data.headers.iter().enumerate() {
+        widths[i] = widths[i].max(header.len());
+    }
+
+    // Check data row widths
+    for row in &data.rows {
+        for (i, cell) in row.iter().enumerate() {
+            if i < num_cols {
+                widths[i] = widths[i].max(cell.len());
+            }
+        }
+    }
+
+    // Convert to Constraints (add 1 for padding)
+    widths
+        .iter()
+        .map(|w| Constraint::Length((*w + 1) as u16))
+        .collect()
 }
 
 fn main() -> io::Result<()> {
