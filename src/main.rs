@@ -244,10 +244,31 @@ fn main() -> io::Result<()> {
 
             let table_area = chunks[0];
 
+            // Filter rows based on filter_text (case-insensitive across all columns)
+            let filter_lower = filter.to_lowercase();
+            let display_rows: Vec<&Vec<String>> = if filter.is_empty() {
+                table_data.rows.iter().collect()
+            } else {
+                table_data.rows.iter()
+                    .filter(|row| row.iter().any(|cell|
+                        cell.to_lowercase().contains(&filter_lower)
+                    ))
+                    .collect()
+            };
+
+            let total_rows = table_data.rows.len();
+            let filtered_rows = display_rows.len();
+
             // Create dynamic title showing position
             let row_info = table_state
                 .selected()
-                .map(|r| format!("Row {}/{}", r + 1, table_data.rows.len()))
+                .map(|r| {
+                    if filter.is_empty() {
+                        format!("Row {}/{}", r + 1, total_rows)
+                    } else {
+                        format!("Row {}/{} (filtered from {})", r + 1, filtered_rows, total_rows)
+                    }
+                })
                 .unwrap_or_default();
 
             let col_info = table_state
@@ -283,8 +304,8 @@ fn main() -> io::Result<()> {
                 .map(|h| Cell::from(h.as_str()).style(Style::default().add_modifier(Modifier::BOLD)));
             let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
 
-            // Create data rows
-            let data_rows = table_data.rows.iter().map(|row| {
+            // Create data rows from filtered set
+            let data_rows = display_rows.iter().map(|row| {
                 let cells = row.iter().map(|c| Cell::from(c.as_str()));
                 Row::new(cells)
             });
@@ -436,7 +457,10 @@ fn main() -> io::Result<()> {
 
                             // Apply filter and return to normal mode
                             KeyCode::Enter => {
-                                // Filter will be implemented in Task 3
+                                // Set or clear filter based on input
+                                filter_text = input_buffer.trim().to_string();
+                                // Reset selection to 0 when filter changes
+                                table_state = TableState::default().with_selected(Some(0));
                                 current_mode = AppMode::Normal;
                                 input_buffer.clear();
                             }
