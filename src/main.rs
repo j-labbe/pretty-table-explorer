@@ -1,5 +1,11 @@
-use std::io;
+mod parser;
+
+use std::io::{self, Read};
 use std::time::Duration;
+
+// TableData will be used for rendering in 02-02
+#[allow(unused_imports)]
+use parser::TableData;
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
@@ -35,6 +41,27 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io
 }
 
 fn main() -> io::Result<()> {
+    // Read and parse stdin before initializing TUI
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input)?;
+
+    // table_data will be used for rendering in 02-02
+    let _table_data = match parser::parse_psql(&input) {
+        Some(data) => data,
+        None => {
+            eprintln!("Error: Invalid or empty input. Expected psql table format.");
+            eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
+            std::process::exit(1);
+        }
+    };
+
+    // Print parsing summary (temporary - will be replaced by table rendering in 02-02)
+    eprintln!(
+        "Parsed table: {} columns, {} rows",
+        _table_data.column_count(),
+        _table_data.row_count()
+    );
+
     // Set up panic hook to restore terminal on crash
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
