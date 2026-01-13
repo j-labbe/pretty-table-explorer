@@ -11,7 +11,7 @@ None
 ## Phases
 
 - [x] **Phase 1: Foundation** - Project setup, Rust/ratatui scaffold, basic terminal rendering ✓
-- [ ] **Phase 2: Table Rendering** - Parse psql output, column alignment, clean table display
+- [x] **Phase 2: Table Rendering** - Parse psql output, column alignment, clean table display ✓
 - [ ] **Phase 3: Navigation** - Vim/arrow key controls, horizontal/vertical scrolling
 - [ ] **Phase 4: PostgreSQL Integration** - Direct database connection, query interface, search/filter
 
@@ -35,8 +35,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 02-01: Parse psql pipe format into structured data
-- [ ] 02-02: Render table with calculated column widths
+- [x] 02-01: Parse psql pipe format into structured data ✓
+- [x] 02-02: Render table with calculated column widths ✓
 
 ### Phase 3: Navigation
 **Goal**: Full keyboard navigation with smooth scrolling
@@ -67,6 +67,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-01-13 |
-| 2. Table Rendering | 0/2 | Not started | - |
+| 2. Table Rendering | 2/2 | Complete | 2026-01-13 |
 | 3. Navigation | 0/2 | Not started | - |
 | 4. PostgreSQL Integration | 0/2 | Not started | - |
