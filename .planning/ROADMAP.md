@@ -12,7 +12,7 @@ None
 
 - [x] **Phase 1: Foundation** - Project setup, Rust/ratatui scaffold, basic terminal rendering ✓
 - [x] **Phase 2: Table Rendering** - Parse psql output, column alignment, clean table display ✓
-- [ ] **Phase 3: Navigation** - Vim/arrow key controls, horizontal/vertical scrolling
+- [x] **Phase 3: Navigation** - Vim/arrow key controls, horizontal/vertical scrolling ✓
 - [ ] **Phase 4: PostgreSQL Integration** - Direct database connection, query interface, search/filter
 
 ## Phase Details
@@ -45,8 +45,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 03-01: Vim-style (hjkl) and arrow key navigation
-- [ ] 03-02: Horizontal/vertical scrolling with viewport tracking
+- [x] 03-01: Vim-style (hjkl) and arrow key navigation ✓
+- [x] 03-02: Horizontal/vertical scrolling with viewport tracking ✓
 
 ### Phase 4: PostgreSQL Integration
 **Goal**: Direct database connection with query interface and search
@@ -68,5 +68,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete | 2026-01-13 |
 | 2. Table Rendering | 2/2 | Complete | 2026-01-13 |
-| 3. Navigation | 0/2 | Not started | - |
+| 3. Navigation | 2/2 | Complete | 2026-01-13 |
 | 4. PostgreSQL Integration | 0/2 | Not started | - |
