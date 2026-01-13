@@ -14,8 +14,16 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Row, Table, TableState},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
 };
+
+/// Application mode for handling different input states.
+#[derive(Clone, Copy, PartialEq)]
+enum AppMode {
+    Normal,      // Regular table navigation
+    QueryInput,  // ':' pressed, entering SQL query
+    SearchInput, // '/' pressed, entering search filter
+}
 
 /// Initialize the terminal for TUI rendering.
 /// Enables raw mode, enters alternate screen, and creates a Terminal instance.
@@ -131,8 +139,8 @@ fn main() -> io::Result<()> {
     // Parse CLI arguments
     let db_config = parse_args();
 
-    // Get table data from either database or stdin
-    let table_data = if let Some((conn_string, query)) = db_config {
+    // Get table data and optional database client from either database or stdin
+    let (mut table_data, mut db_client) = if let Some((conn_string, query)) = db_config {
         // Direct database connection mode
         match db::connect(&conn_string) {
             Ok(mut client) => match db::execute_query(&mut client, &query) {
@@ -141,7 +149,7 @@ fn main() -> io::Result<()> {
                         eprintln!("Query returned no results.");
                         std::process::exit(0);
                     }
-                    data
+                    (data, Some(client))
                 }
                 Err(e) => {
                     eprintln!("Error: Query failed: {}", e);
@@ -178,7 +186,7 @@ fn main() -> io::Result<()> {
         io::stdin().read_to_string(&mut input)?;
 
         match parser::parse_psql(&input) {
-            Some(data) => data,
+            Some(data) => (data, None),
             None => {
                 eprintln!("Error: Invalid or empty input. Expected psql table format.");
                 eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
@@ -187,8 +195,14 @@ fn main() -> io::Result<()> {
         }
     };
 
-    // Calculate column widths once before entering the render loop
-    let widths = calculate_widths(&table_data);
+    // Calculate column widths (recalculated when data changes)
+    let mut widths = calculate_widths(&table_data);
+
+    // Application state for input modes
+    let mut current_mode = AppMode::Normal;
+    let mut input_buffer = String::new();
+    let mut filter_text = String::new();
+    let mut status_message: Option<String> = None;
 
     // Set up panic hook to restore terminal on crash
     let original_hook = std::panic::take_hook();
@@ -205,8 +219,30 @@ fn main() -> io::Result<()> {
 
     // Main event loop
     loop {
+        // Capture state needed for rendering (to avoid borrow issues)
+        let mode = current_mode;
+        let input_buf = input_buffer.clone();
+        let filter = filter_text.clone();
+        let status = status_message.clone();
+
         terminal.draw(|frame| {
             let area = frame.area();
+
+            // Split layout: table area + optional input bar at bottom
+            let show_input_bar = mode != AppMode::Normal;
+            let chunks = if show_input_bar {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(3), Constraint::Length(3)])
+                    .split(area)
+            } else {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(3)])
+                    .split(area)
+            };
+
+            let table_area = chunks[0];
 
             // Create dynamic title showing position
             let row_info = table_state
@@ -225,9 +261,19 @@ fn main() -> io::Result<()> {
                 format!(" [{}{}] ", row_info, col_info)
             };
 
+            // Show filter in title if active
+            let filter_info = if !filter.is_empty() {
+                format!(" / {} ", filter)
+            } else {
+                String::new()
+            };
+
+            // Show status message or error in title if present
+            let status_info = status.as_ref().map(|s| format!(" {} ", s)).unwrap_or_default();
+
             let title = format!(
-                " Pretty Table Explorer{}- hjkl: nav, q: quit ",
-                position
+                " Pretty Table Explorer{}{}{}- hjkl: nav, :/: query/search, q: quit ",
+                position, filter_info, status_info
             );
 
             // Create header row with bold style
@@ -255,41 +301,106 @@ fn main() -> io::Result<()> {
                 .column_highlight_style(Style::default().fg(Color::Cyan))
                 .highlight_symbol(">> ");
 
-            frame.render_stateful_widget(table, area, &mut table_state);
+            frame.render_stateful_widget(table, table_area, &mut table_state);
+
+            // Render input bar when in input mode
+            if show_input_bar {
+                let input_area = chunks[1];
+                let (prefix, style) = match mode {
+                    AppMode::QueryInput => (":", Style::default().fg(Color::Cyan)),
+                    AppMode::SearchInput => ("/", Style::default().fg(Color::Yellow)),
+                    AppMode::Normal => ("", Style::default()),
+                };
+
+                let input_text = format!("{}{}", prefix, input_buf);
+                let input_widget = Paragraph::new(input_text)
+                    .style(style)
+                    .block(Block::default().borders(Borders::ALL));
+
+                frame.render_widget(input_widget, input_area);
+            }
         })?;
+
+        // Clear status message after rendering
+        status_message = None;
 
         // Poll with 250ms timeout for responsive feel
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    // Quit on 'q' or Ctrl+C
-                    KeyCode::Char('q') => break,
-                    KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => break,
+                match current_mode {
+                    AppMode::Normal => {
+                        match key.code {
+                            // Quit on 'q' or Ctrl+C
+                            KeyCode::Char('q') => break,
+                            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => break,
 
-                    // Vertical navigation
-                    KeyCode::Char('j') | KeyCode::Down => table_state.select_next(),
-                    KeyCode::Char('k') | KeyCode::Up => table_state.select_previous(),
+                            // Enter query input mode
+                            KeyCode::Char(':') => {
+                                current_mode = AppMode::QueryInput;
+                                input_buffer.clear();
+                            }
 
-                    // Jump to first/last
-                    KeyCode::Char('g') | KeyCode::Home => table_state.select_first(),
-                    KeyCode::Char('G') | KeyCode::End => table_state.select_last(),
+                            // Enter search input mode
+                            KeyCode::Char('/') => {
+                                current_mode = AppMode::SearchInput;
+                                input_buffer.clear();
+                            }
 
-                    // Horizontal column navigation
-                    KeyCode::Char('h') | KeyCode::Left => table_state.select_previous_column(),
-                    KeyCode::Char('l') | KeyCode::Right => table_state.select_next_column(),
+                            // Vertical navigation
+                            KeyCode::Char('j') | KeyCode::Down => table_state.select_next(),
+                            KeyCode::Char('k') | KeyCode::Up => table_state.select_previous(),
 
-                    // Page navigation (half-page like vim)
-                    KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        table_state.scroll_up_by(10);
+                            // Jump to first/last
+                            KeyCode::Char('g') | KeyCode::Home => table_state.select_first(),
+                            KeyCode::Char('G') | KeyCode::End => table_state.select_last(),
+
+                            // Horizontal column navigation
+                            KeyCode::Char('h') | KeyCode::Left => table_state.select_previous_column(),
+                            KeyCode::Char('l') | KeyCode::Right => table_state.select_next_column(),
+
+                            // Page navigation (half-page like vim)
+                            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                table_state.scroll_up_by(10);
+                            }
+                            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                table_state.scroll_down_by(10);
+                            }
+                            // Also support Page Up/Page Down
+                            KeyCode::PageUp => table_state.scroll_up_by(10),
+                            KeyCode::PageDown => table_state.scroll_down_by(10),
+
+                            _ => {}
+                        }
                     }
-                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        table_state.scroll_down_by(10);
-                    }
-                    // Also support Page Up/Page Down
-                    KeyCode::PageUp => table_state.scroll_up_by(10),
-                    KeyCode::PageDown => table_state.scroll_down_by(10),
 
-                    _ => {}
+                    AppMode::QueryInput | AppMode::SearchInput => {
+                        match key.code {
+                            // Cancel and return to normal mode
+                            KeyCode::Esc => {
+                                current_mode = AppMode::Normal;
+                                input_buffer.clear();
+                            }
+
+                            // Execute action and return to normal mode
+                            KeyCode::Enter => {
+                                // Action will be implemented in Task 2 and 3
+                                current_mode = AppMode::Normal;
+                                input_buffer.clear();
+                            }
+
+                            // Text input
+                            KeyCode::Char(c) => {
+                                input_buffer.push(c);
+                            }
+
+                            // Backspace
+                            KeyCode::Backspace => {
+                                input_buffer.pop();
+                            }
+
+                            _ => {}
+                        }
+                    }
                 }
             }
         }
