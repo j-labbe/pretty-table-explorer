@@ -13,7 +13,7 @@ None
 - [x] **Phase 1: Foundation** - Project setup, Rust/ratatui scaffold, basic terminal rendering ✓
 - [x] **Phase 2: Table Rendering** - Parse psql output, column alignment, clean table display ✓
 - [x] **Phase 3: Navigation** - Vim/arrow key controls, horizontal/vertical scrolling ✓
-- [ ] **Phase 4: PostgreSQL Integration** - Direct database connection, query interface, search/filter
+- [x] **Phase 4: PostgreSQL Integration** - Direct database connection, query interface, search/filter ✓
 
 ## Phase Details
 
@@ -56,8 +56,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 04-01: PostgreSQL connection and query execution
-- [ ] 04-02: Interactive query input and search/filter
+- [x] 04-01: PostgreSQL connection and query execution ✓
+- [x] 04-02: Interactive query input and search/filter ✓
 
 ## Progress
 
@@ -69,4 +69,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 2/2 | Complete | 2026-01-13 |
 | 2. Table Rendering | 2/2 | Complete | 2026-01-13 |
 | 3. Navigation | 2/2 | Complete | 2026-01-13 |
-| 4. PostgreSQL Integration | 0/2 | Not started | - |
+| 4. PostgreSQL Integration | 2/2 | Complete | 2026-01-13 |
