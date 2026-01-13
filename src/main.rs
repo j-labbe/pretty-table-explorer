@@ -12,7 +12,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Row, Table},
+    widgets::{Block, Borders, Cell, Row, Table, TableState},
 };
 
 /// Initialize the terminal for TUI rendering.
@@ -92,6 +92,9 @@ fn main() -> io::Result<()> {
 
     let mut terminal = init_terminal()?;
 
+    // Initialize table state with first row selected
+    let mut table_state = TableState::default().with_selected(Some(0));
+
     // Main event loop
     loop {
         terminal.draw(|frame| {
@@ -117,9 +120,11 @@ fn main() -> io::Result<()> {
                     Block::default()
                         .title(" Pretty Table Explorer - Press 'q' to quit ")
                         .borders(Borders::ALL),
-                );
+                )
+                .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+                .highlight_symbol(">> ");
 
-            frame.render_widget(table, area);
+            frame.render_stateful_widget(table, area, &mut table_state);
         })?;
 
         // Poll with 250ms timeout for responsive feel
