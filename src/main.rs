@@ -1,7 +1,8 @@
 use std::io;
+use std::time::Duration;
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -41,8 +42,28 @@ fn main() -> io::Result<()> {
 
     let mut terminal = init_terminal()?;
 
-    // Placeholder: immediately exit for now (Task 2 will add event loop)
+    // Main event loop
+    loop {
+        terminal.draw(|_frame| {
+            // Placeholder: Task 3 will add rendering
+        })?;
 
+        // Poll with 250ms timeout for responsive feel
+        if event::poll(Duration::from_millis(250))? {
+            if let Event::Key(key) = event::read()? {
+                // Quit on 'q' or Ctrl+C
+                if key.code == KeyCode::Char('q')
+                    || (key.modifiers.contains(KeyModifiers::CONTROL)
+                        && key.code == KeyCode::Char('c'))
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Clear terminal before exit
+    terminal.clear()?;
     restore_terminal(&mut terminal)?;
     Ok(())
 }
