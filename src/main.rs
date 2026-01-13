@@ -100,6 +100,16 @@ fn main() -> io::Result<()> {
         terminal.draw(|frame| {
             let area = frame.area();
 
+            // Create dynamic title showing position
+            let position_info = match table_state.selected() {
+                Some(idx) => format!(" Row {}/{} ", idx + 1, table_data.rows.len()),
+                None => String::new(),
+            };
+            let title = format!(
+                " Pretty Table Explorer{}- hjkl: nav, Ctrl+U/D: page, q: quit ",
+                position_info
+            );
+
             // Create header row with bold style
             let header_cells = table_data
                 .headers
@@ -118,7 +128,7 @@ fn main() -> io::Result<()> {
                 .header(header_row)
                 .block(
                     Block::default()
-                        .title(" Pretty Table Explorer - hjkl/arrows: navigate, q: quit ")
+                        .title(title)
                         .borders(Borders::ALL),
                 )
                 .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
@@ -146,6 +156,17 @@ fn main() -> io::Result<()> {
                     // Horizontal column navigation
                     KeyCode::Char('h') | KeyCode::Left => table_state.select_previous_column(),
                     KeyCode::Char('l') | KeyCode::Right => table_state.select_next_column(),
+
+                    // Page navigation (half-page like vim)
+                    KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        table_state.scroll_up_by(10);
+                    }
+                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        table_state.scroll_down_by(10);
+                    }
+                    // Also support Page Up/Page Down
+                    KeyCode::PageUp => table_state.scroll_up_by(10),
+                    KeyCode::PageDown => table_state.scroll_down_by(10),
 
                     _ => {}
                 }
