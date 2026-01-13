@@ -6,7 +6,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::prelude::*;
+use ratatui::{
+    prelude::*,
+    widgets::{Block, Borders, Paragraph},
+};
 
 /// Initialize the terminal for TUI rendering.
 /// Enables raw mode, enters alternate screen, and creates a Terminal instance.
@@ -44,8 +47,35 @@ fn main() -> io::Result<()> {
 
     // Main event loop
     loop {
-        terminal.draw(|_frame| {
-            // Placeholder: Task 3 will add rendering
+        terminal.draw(|frame| {
+            let area = frame.area();
+
+            // Create centered layout
+            let vertical = Layout::vertical([
+                Constraint::Fill(1),
+                Constraint::Length(5),
+                Constraint::Fill(1),
+            ])
+            .split(area);
+
+            let horizontal = Layout::horizontal([
+                Constraint::Fill(1),
+                Constraint::Length(40),
+                Constraint::Fill(1),
+            ])
+            .split(vertical[1]);
+
+            // Create block with title and borders
+            let block = Block::default()
+                .title(" Pretty Table Explorer ")
+                .borders(Borders::ALL);
+
+            // Create paragraph with quit instruction
+            let paragraph = Paragraph::new("Press 'q' to quit")
+                .block(block)
+                .alignment(Alignment::Center);
+
+            frame.render_widget(paragraph, horizontal[1]);
         })?;
 
         // Poll with 250ms timeout for responsive feel
