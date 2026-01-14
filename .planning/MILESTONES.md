@@ -1,5 +1,31 @@
 # Project Milestones: Pretty Table Explorer
 
+## v1.1 Distribution (Shipped: 2026-01-14)
+
+**Delivered:** Multi-platform releases with one-line installation and self-update capability.
+
+**Phases completed:** 5-6 (4 plans total)
+
+**Key accomplishments:**
+
+- Multi-platform release workflow (Linux/macOS, x86_64/aarch64)
+- CI pipeline with test, clippy, fmt checks
+- One-line install script with platform detection and checksum verification
+- Self-update command (`pte update`)
+- Version flag (--version) via clap
+
+**Stats:**
+
+- 2 phases, 4 plans
+- Releases: v1.1.0, v1.1.1
+- Timeline: 1 day (2026-01-14)
+
+**Git tags:** `v1.1.0`, `v1.1.1`
+
+**What's next:** Plan v1.2 or v2.0 features (column resizing, export, etc.)
+
+---
+
 ## v1.0 MVP (Shipped: 2026-01-14)
 
 **Delivered:** Interactive terminal table viewer for PostgreSQL with dual-mode operation (stdin pipe + direct connection), vim-style navigation, and query/search capabilities.
@@ -23,7 +49,5 @@
 - 2 days from project start to ship
 
 **Git range:** `feat(01-01)` → `feat(04-02)`
-
-**What's next:** TBD — consider v1.1 for additional features (column resizing, export, etc.)
 
 ---

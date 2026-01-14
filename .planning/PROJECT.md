@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An interactive terminal-based table viewer for PostgreSQL that provides smooth scrolling and clean rendering of query results. Supports both piped psql output and direct database connections, making it easy to explore data without formatting chaos.
+An interactive terminal-based table viewer for PostgreSQL that provides smooth scrolling and clean rendering of query results. Supports both piped psql output and direct database connections, with one-line installation and self-update capability.
 
 ## Core Value
 
@@ -20,6 +20,10 @@ Clean table rendering with proper column alignment — no wrapping, no spacing i
 - ✓ Accept piped input from psql — v1.0
 - ✓ Direct PostgreSQL connection with query interface — v1.0
 - ✓ Search/filter rows within table view — v1.0
+- ✓ Multi-platform binary releases — v1.1
+- ✓ One-line install script — v1.1
+- ✓ Self-update command — v1.1
+- ✓ Version flag (--version) — v1.1
 
 ### Active
 
@@ -41,7 +45,7 @@ Target environment is Ubuntu Linux running under WSL2.
 ## Constraints
 
 - **Language**: Rust — fast, safe, excellent TUI ecosystem (ratatui)
-- **Platform**: Linux/WSL2 — primary target, cross-platform not required for v1
+- **Platform**: Linux/macOS — x86_64 and aarch64 supported
 
 ## Key Decisions
 
@@ -53,13 +57,18 @@ Target environment is Ubuntu Linux running under WSL2.
 | Sync postgres crate | Avoid async complexity in TUI event loop | ✓ Good — simple integration |
 | use-dev-tty feature | Enable keyboard input when stdin is piped | ✓ Good — critical for dual-mode operation |
 | AppMode enum for input | Clear state management between modes | ✓ Good — clean separation of concerns |
+| clap derive macros | Cleaner CLI code than manual parsing | ✓ Good — 45 lines reduced to 12 |
+| ureq for HTTP | Sync API, smaller binary than reqwest | ✓ Good — self-update works without async runtime |
+| POSIX shell installer | Maximum portability across Linux/macOS | ✓ Good — works on bash, zsh, sh |
+| Native ARM runners | Simpler than cross-compilation for macOS | ✓ Good — reliable builds |
 
 ## Context
 
-Shipped v1.0 with 4,235 lines of Rust.
-Tech stack: Rust 2021 edition, ratatui v0.29, crossterm v0.28, postgres v0.19.
+Shipped v1.1.1 with ~4,500 lines of Rust.
+Tech stack: Rust 2021 edition, ratatui v0.29, crossterm v0.28, postgres v0.19, clap v4, ureq v2, sha2 v0.10.
 Dual-mode operation: stdin pipe for psql output, --connect for direct PostgreSQL access.
 All core viewing features implemented: navigation, scrolling, query, filter.
+Distribution: GitHub releases for 4 platforms, install script, self-update command.
 
 ---
-*Last updated: 2026-01-14 after v1.0 milestone*
+*Last updated: 2026-01-14 after v1.1 milestone*
