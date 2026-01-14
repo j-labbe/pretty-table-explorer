@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: linux-aarch64
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-13
+            name: macos-x86_64
+          - target: aarch64-apple-darwin
+            os: macos-14
+            name: macos-aarch64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build binary
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+            cargo build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Rename binary
+        run: |
+          mv target/${{ matrix.target }}/release/pte pte-${{ matrix.name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pte-${{ matrix.name }}
+          path: pte-${{ matrix.name }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir release
+          mv artifacts/pte-linux-x86_64/pte-linux-x86_64 release/
+          mv artifacts/pte-linux-aarch64/pte-linux-aarch64 release/
+          mv artifacts/pte-macos-x86_64/pte-macos-x86_64 release/
+          mv artifacts/pte-macos-aarch64/pte-macos-aarch64 release/
+          chmod +x release/pte-*
+
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum pte-* > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/pte-linux-x86_64
+            release/pte-linux-aarch64
+            release/pte-macos-x86_64
+            release/pte-macos-aarch64
+            release/checksums.txt
+          generate_release_notes: true
