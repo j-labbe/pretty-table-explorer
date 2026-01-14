@@ -1,11 +1,11 @@
 [package]
 name = "pretty-table-explorer"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 description = "Interactive terminal table viewer for PostgreSQL"
-authors = ["Your Name"]
+authors = ["Jack Labbe"]
 license = "MIT"
-repository = "https://github.com/yourusername/pretty-table-explorer"
+repository = "https://github.com/j-labbe/pretty-table-explorer"
 readme = "README.md"
 
 [[bin]]
