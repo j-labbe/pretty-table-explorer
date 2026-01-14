@@ -1,11 +1,24 @@
 mod db;
 mod parser;
 
-use std::env;
 use std::io::{self, Read};
 use std::time::{Duration, Instant};
 
+use clap::Parser;
 use parser::TableData;
+
+/// Interactive terminal table viewer for PostgreSQL
+#[derive(Parser, Debug)]
+#[command(name = "pte", version, about, long_about = None)]
+struct Cli {
+    /// Connect to PostgreSQL database
+    #[arg(long)]
+    connect: Option<String>,
+
+    /// SQL query to execute (default: show tables)
+    #[arg(long)]
+    query: Option<String>,
+}
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
@@ -84,9 +97,9 @@ fn calculate_widths(data: &TableData) -> Vec<Constraint> {
 }
 
 /// Print usage information and exit.
-fn print_usage() {
-    eprintln!("Usage: pretty-table-explorer [OPTIONS]");
-    eprintln!("       cat data.txt | pretty-table-explorer");
+fn print_usage() -> ! {
+    eprintln!("Usage: pte [OPTIONS]");
+    eprintln!("       cat data.txt | pte");
     eprintln!();
     eprintln!("Options:");
     eprintln!("  --connect <CONN_STRING>  Connect to PostgreSQL database");
@@ -98,55 +111,23 @@ fn print_usage() {
     std::process::exit(1);
 }
 
-/// Parse command-line arguments.
-/// Returns (connection_string, query, has_custom_query) if --connect is provided.
-fn parse_args() -> Option<(String, String, bool)> {
-    let args: Vec<String> = env::args().collect();
-    let mut connection_string: Option<String> = None;
-    let mut query: Option<String> = None;
+/// Parse CLI arguments and return database config if --connect provided.
+/// Returns (connection_string, query, has_custom_query) if in database mode.
+fn parse_cli() -> Option<(String, String, bool)> {
+    let cli = Cli::parse();
 
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--connect" => {
-                if i + 1 >= args.len() {
-                    eprintln!("Error: --connect requires a connection string argument");
-                    print_usage();
-                }
-                connection_string = Some(args[i + 1].clone());
-                i += 2;
-            }
-            "--query" => {
-                if i + 1 >= args.len() {
-                    eprintln!("Error: --query requires a SQL query argument");
-                    print_usage();
-                }
-                query = Some(args[i + 1].clone());
-                i += 2;
-            }
-            "--help" | "-h" => {
-                print_usage();
-            }
-            _ => {
-                eprintln!("Error: Unknown argument: {}", args[i]);
-                print_usage();
-            }
-        }
-    }
-
-    // If --connect provided, return connection info with default query
-    connection_string.map(|conn| {
-        let has_custom_query = query.is_some();
+    cli.connect.map(|conn| {
+        let has_custom_query = cli.query.is_some();
         let default_query =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
                 .to_string();
-        (conn, query.unwrap_or(default_query), has_custom_query)
+        (conn, cli.query.unwrap_or(default_query), has_custom_query)
     })
 }
 
 fn main() -> io::Result<()> {
     // Parse CLI arguments
-    let db_config = parse_args();
+    let db_config = parse_cli();
 
     // Get table data, database client, and view mode from either database or stdin
     let (mut table_data, mut db_client, mut view_mode) = if let Some((conn_string, query, has_custom_query)) = db_config {
