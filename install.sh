@@ -10,8 +10,14 @@ set -e
 
 # Configuration (can be overridden via environment variables)
 REPO="${REPO:-j-labbe/pretty-table-explorer}"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 BINARY_NAME="pte"
+
+# Track if INSTALL_DIR was explicitly set by user
+if [ -n "${INSTALL_DIR:-}" ]; then
+    INSTALL_DIR_SET=1
+else
+    INSTALL_DIR="/usr/local/bin"
+fi
 
 # Colors for output (if terminal supports them)
 RED='\033[0;31m'
@@ -143,6 +149,20 @@ main() {
 
     info "Detected platform: ${OS}-${ARCH}"
 
+    # Check if pte already exists in PATH and use that location for upgrade
+    # (unless INSTALL_DIR was explicitly set by user)
+    if [ -z "${INSTALL_DIR_SET:-}" ]; then
+        EXISTING_PTE=$(command -v "$BINARY_NAME" 2>/dev/null || true)
+        if [ -n "$EXISTING_PTE" ]; then
+            EXISTING_DIR=$(dirname "$EXISTING_PTE")
+            if [ "$EXISTING_DIR" != "$INSTALL_DIR" ]; then
+                info "Found existing pte at: $EXISTING_PTE"
+                info "Installing to same location for upgrade..."
+                INSTALL_DIR="$EXISTING_DIR"
+            fi
+        fi
+    fi
+
     # Create temp directory
     TMP_DIR=$(mktemp -d)
 
@@ -188,8 +208,16 @@ main() {
 
     # Verify installation
     if has_command "$BINARY_NAME"; then
+        INSTALLED_PATH=$(command -v "$BINARY_NAME")
         VERSION=$("$BINARY_NAME" --version 2>/dev/null || echo "unknown")
         info "Successfully installed: $VERSION"
+
+        # Check if there's another pte that might shadow this one
+        if [ "$INSTALLED_PATH" != "${INSTALL_DIR}/${BINARY_NAME}" ]; then
+            warn "Note: Another pte exists at $INSTALLED_PATH"
+            warn "The installed version is at ${INSTALL_DIR}/${BINARY_NAME}"
+            warn "You may need to update your PATH or remove the old binary"
+        fi
     else
         warn "Installed to ${INSTALL_DIR}/${BINARY_NAME}"
         warn "Make sure ${INSTALL_DIR} is in your PATH"
