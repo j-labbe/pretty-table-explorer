@@ -7,18 +7,18 @@ An interactive terminal-based table viewer for PostgreSQL. Provides smooth scrol
 ### One-line install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/yourusername/pretty-table-explorer/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/j-labbe/pretty-table-explorer/master/install.sh | sh
 ```
 
 ### Custom install directory
 
 ```sh
-INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/yourusername/pretty-table-explorer/master/install.sh | sh
+INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/j-labbe/pretty-table-explorer/master/install.sh | sh
 ```
 
 ### Manual download
 
-Download the binary for your platform from [GitHub Releases](https://github.com/yourusername/pretty-table-explorer/releases/latest):
+Download the binary for your platform from [GitHub Releases](https://github.com/j-labbe/pretty-table-explorer/releases/latest):
 
 - Linux x86_64: `pte-linux-x86_64`
 - Linux ARM64: `pte-linux-aarch64`

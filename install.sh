@@ -1,15 +1,15 @@
 #!/bin/sh
 # install.sh - One-line installer for pte (pretty-table-explorer)
-# Usage: curl -fsSL https://raw.githubusercontent.com/yourusername/pretty-table-explorer/master/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/j-labbe/pretty-table-explorer/master/install.sh | sh
 #
 # Environment variables:
-#   REPO         - GitHub repository (default: yourusername/pretty-table-explorer)
+#   REPO         - GitHub repository (default: j-labbe/pretty-table-explorer)
 #   INSTALL_DIR  - Installation directory (default: /usr/local/bin)
 
 set -e
 
 # Configuration (can be overridden via environment variables)
-REPO="${REPO:-yourusername/pretty-table-explorer}"
+REPO="${REPO:-j-labbe/pretty-table-explorer}"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 BINARY_NAME="pte"
 

@@ -9,7 +9,7 @@ use std::io::{self, Read, Write};
 use ureq::serde_json;
 
 /// GitHub repository for releases (change this if you fork the project)
-const GITHUB_REPO: &str = "yourusername/pretty-table-explorer";
+const GITHUB_REPO: &str = "j-labbe/pretty-table-explorer";
 
 /// Current version from Cargo.toml
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
