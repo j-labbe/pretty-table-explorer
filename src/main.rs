@@ -1,16 +1,20 @@
 mod db;
 mod parser;
+mod update;
 
 use std::io::{self, Read};
 use std::time::{Duration, Instant};
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use parser::TableData;
 
 /// Interactive terminal table viewer for PostgreSQL
 #[derive(Parser, Debug)]
 #[command(name = "pte", version, about, long_about = None)]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
     /// Connect to PostgreSQL database
     #[arg(long)]
     connect: Option<String>,
@@ -18,6 +22,12 @@ struct Cli {
     /// SQL query to execute (default: show tables)
     #[arg(long)]
     query: Option<String>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Update to the latest version
+    Update,
 }
 
 use crossterm::{
@@ -113,21 +123,32 @@ fn print_usage() -> ! {
 
 /// Parse CLI arguments and return database config if --connect provided.
 /// Returns (connection_string, query, has_custom_query) if in database mode.
-fn parse_cli() -> Option<(String, String, bool)> {
+fn parse_cli() -> (Option<Commands>, Option<(String, String, bool)>) {
     let cli = Cli::parse();
 
-    cli.connect.map(|conn| {
+    let db_config = cli.connect.map(|conn| {
         let has_custom_query = cli.query.is_some();
         let default_query =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
                 .to_string();
         (conn, cli.query.unwrap_or(default_query), has_custom_query)
-    })
+    });
+
+    (cli.command, db_config)
 }
 
 fn main() -> io::Result<()> {
     // Parse CLI arguments
-    let db_config = parse_cli();
+    let (command, db_config) = parse_cli();
+
+    // Handle update subcommand first
+    if let Some(Commands::Update) = command {
+        if let Err(e) = update::do_update() {
+            eprintln!("Update failed: {}", e);
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
 
     // Get table data, database client, and view mode from either database or stdin
     let (mut table_data, mut db_client, mut view_mode) = if let Some((conn_string, query, has_custom_query)) = db_config {
