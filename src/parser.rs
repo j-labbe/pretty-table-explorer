@@ -9,11 +9,13 @@ pub struct TableData {
 
 impl TableData {
     /// Returns the number of columns in the table.
+    #[allow(dead_code)]
     pub fn column_count(&self) -> usize {
         self.headers.len()
     }
 
     /// Returns the number of data rows in the table.
+    #[allow(dead_code)]
     pub fn row_count(&self) -> usize {
         self.rows.len()
     }
@@ -40,8 +42,7 @@ pub fn parse_psql(input: &str) -> Option<TableData> {
 
     // Find the first non-empty line (header row)
     let mut line_iter = lines.iter().enumerate();
-    let (header_idx, header_line) = line_iter
-        .find(|(_, line)| !line.trim().is_empty())?;
+    let (header_idx, header_line) = line_iter.find(|(_, line)| !line.trim().is_empty())?;
 
     // Parse headers by splitting on |
     let headers: Vec<String> = header_line
@@ -81,10 +82,7 @@ pub fn parse_psql(input: &str) -> Option<TableData> {
         }
 
         // Parse row by splitting on |
-        let row: Vec<String> = line
-            .split('|')
-            .map(|s| s.trim().to_string())
-            .collect();
+        let row: Vec<String> = line.split('|').map(|s| s.trim().to_string()).collect();
 
         rows.push(row);
     }

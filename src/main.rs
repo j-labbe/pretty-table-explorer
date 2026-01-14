@@ -51,9 +51,9 @@ enum AppMode {
 /// View mode for database browser.
 #[derive(Clone, Copy, PartialEq)]
 enum ViewMode {
-    TableList,   // Viewing list of tables (can select with Enter)
-    TableData,   // Viewing table contents (Esc to go back)
-    PipeData,    // Viewing piped data (no back navigation)
+    TableList, // Viewing list of tables (can select with Enter)
+    TableData, // Viewing table contents (Esc to go back)
+    PipeData,  // Viewing piped data (no back navigation)
 }
 
 /// Initialize the terminal for TUI rendering.
@@ -151,65 +151,68 @@ fn main() -> io::Result<()> {
     }
 
     // Get table data, database client, and view mode from either database or stdin
-    let (mut table_data, mut db_client, mut view_mode) = if let Some((conn_string, query, has_custom_query)) = db_config {
-        // Direct database connection mode
-        match db::connect(&conn_string) {
-            Ok(mut client) => match db::execute_query(&mut client, &query) {
-                Ok(data) => {
-                    if data.headers.is_empty() && data.rows.is_empty() {
-                        eprintln!("Query returned no results.");
-                        std::process::exit(0);
+    let (mut table_data, mut db_client, mut view_mode) =
+        if let Some((conn_string, query, has_custom_query)) = db_config {
+            // Direct database connection mode
+            match db::connect(&conn_string) {
+                Ok(mut client) => match db::execute_query(&mut client, &query) {
+                    Ok(data) => {
+                        if data.headers.is_empty() && data.rows.is_empty() {
+                            eprintln!("Query returned no results.");
+                            std::process::exit(0);
+                        }
+                        // If user provided custom query, show as TableData; otherwise TableList
+                        let mode = if has_custom_query {
+                            ViewMode::TableData
+                        } else {
+                            ViewMode::TableList
+                        };
+                        (data, Some(client), mode)
                     }
-                    // If user provided custom query, show as TableData; otherwise TableList
-                    let mode = if has_custom_query { ViewMode::TableData } else { ViewMode::TableList };
-                    (data, Some(client), mode)
-                }
+                    Err(e) => {
+                        eprintln!("Error: Query failed: {}", e);
+                        std::process::exit(1);
+                    }
+                },
                 Err(e) => {
-                    eprintln!("Error: Query failed: {}", e);
+                    // Provide helpful error messages for common connection issues
+                    let err_msg = e.to_string();
+                    if err_msg.contains("Connection refused") {
+                        eprintln!("Error: Could not connect to PostgreSQL at specified host.");
+                        eprintln!("Make sure PostgreSQL is running and accepting connections.");
+                    } else if err_msg.contains("authentication") || err_msg.contains("password") {
+                        eprintln!("Error: Authentication failed for PostgreSQL connection.");
+                        eprintln!("Check your username and password.");
+                    } else {
+                        eprintln!("Error: Failed to connect to database: {}", e);
+                    }
                     std::process::exit(1);
                 }
-            },
-            Err(e) => {
-                // Provide helpful error messages for common connection issues
-                let err_msg = e.to_string();
-                if err_msg.contains("Connection refused") {
-                    eprintln!(
-                        "Error: Could not connect to PostgreSQL at specified host."
-                    );
-                    eprintln!("Make sure PostgreSQL is running and accepting connections.");
-                } else if err_msg.contains("authentication") || err_msg.contains("password") {
-                    eprintln!("Error: Authentication failed for PostgreSQL connection.");
-                    eprintln!("Check your username and password.");
-                } else {
-                    eprintln!("Error: Failed to connect to database: {}", e);
+            }
+        } else {
+            // Stdin mode - check if stdin has data
+            use std::io::IsTerminal;
+            if io::stdin().is_terminal() {
+                // No piped input and no --connect flag
+                print_usage();
+            }
+
+            // Read and parse stdin
+            let mut input = String::new();
+            io::stdin().read_to_string(&mut input)?;
+
+            match parser::parse_psql(&input) {
+                Some(data) => (data, None, ViewMode::PipeData),
+                None => {
+                    eprintln!("Error: Invalid or empty input. Expected psql table format.");
+                    eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
+                    std::process::exit(1);
                 }
-                std::process::exit(1);
             }
-        }
-    } else {
-        // Stdin mode - check if stdin has data
-        use std::io::IsTerminal;
-        if io::stdin().is_terminal() {
-            // No piped input and no --connect flag
-            print_usage();
-        }
-
-        // Read and parse stdin
-        let mut input = String::new();
-        io::stdin().read_to_string(&mut input)?;
-
-        match parser::parse_psql(&input) {
-            Some(data) => (data, None, ViewMode::PipeData),
-            None => {
-                eprintln!("Error: Invalid or empty input. Expected psql table format.");
-                eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
-                std::process::exit(1);
-            }
-        }
-    };
+        };
 
     // Store the table list for back navigation (only in DB mode without custom query)
-    let mut table_list_cache: Option<TableData> = if view_mode == ViewMode::TableList {
+    let table_list_cache: Option<TableData> = if view_mode == ViewMode::TableList {
         Some(table_data.clone())
     } else {
         None
@@ -242,7 +245,8 @@ fn main() -> io::Result<()> {
     let mut table_state = TableState::default().with_selected(Some(0));
 
     // Track the count of displayed rows for navigation bounds
-    let mut displayed_row_count = table_data.rows.len();
+    #[allow(unused_assignments)]
+    let mut displayed_row_count = 0;
 
     // Main event loop
     loop {
@@ -257,10 +261,13 @@ fn main() -> io::Result<()> {
         let display_rows: Vec<&Vec<String>> = if filter.is_empty() {
             table_data.rows.iter().collect()
         } else {
-            table_data.rows.iter()
-                .filter(|row| row.iter().any(|cell|
-                    cell.to_lowercase().contains(&filter_lower)
-                ))
+            table_data
+                .rows
+                .iter()
+                .filter(|row| {
+                    row.iter()
+                        .any(|cell| cell.to_lowercase().contains(&filter_lower))
+                })
                 .collect()
         };
 
@@ -297,7 +304,12 @@ fn main() -> io::Result<()> {
                     if filter.is_empty() {
                         format!("Row {}/{}", r + 1, total_rows)
                     } else {
-                        format!("Row {}/{} (filtered from {})", r + 1, displayed_row_count, total_rows)
+                        format!(
+                            "Row {}/{} (filtered from {})",
+                            r + 1,
+                            displayed_row_count,
+                            total_rows
+                        )
                     }
                 })
                 .unwrap_or_default();
@@ -321,13 +333,16 @@ fn main() -> io::Result<()> {
             };
 
             // Show status message or error in title if present
-            let status_info = status.as_ref().map(|s| format!("{} ", s)).unwrap_or_default();
+            let status_info = status
+                .as_ref()
+                .map(|s| format!("{} ", s))
+                .unwrap_or_default();
 
             // Build context-appropriate title
             let (context_label, controls) = match current_view {
                 ViewMode::TableList => ("Tables", "Enter: select, /: filter, q: quit"),
                 ViewMode::TableData => {
-                    let label = table_name.as_ref().map(|n| n.as_str()).unwrap_or("Query Result");
+                    let label = table_name.as_deref().unwrap_or("Query Result");
                     (label, "Esc: back, /: filter, :: query, q: quit")
                 }
                 ViewMode::PipeData => ("Data", "/: filter, q: quit"),
@@ -339,10 +354,9 @@ fn main() -> io::Result<()> {
             );
 
             // Create header row with bold style
-            let header_cells = table_data
-                .headers
-                .iter()
-                .map(|h| Cell::from(h.as_str()).style(Style::default().add_modifier(Modifier::BOLD)));
+            let header_cells = table_data.headers.iter().map(|h| {
+                Cell::from(h.as_str()).style(Style::default().add_modifier(Modifier::BOLD))
+            });
             let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
 
             // Create data rows from filtered set
@@ -354,11 +368,7 @@ fn main() -> io::Result<()> {
             // Build table with calculated widths
             let table = Table::new(data_rows, widths.clone())
                 .header(header_row)
-                .block(
-                    Block::default()
-                        .title(title)
-                        .borders(Borders::ALL),
-                )
+                .block(Block::default().title(title).borders(Borders::ALL))
                 .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
                 .column_highlight_style(Style::default().fg(Color::Cyan))
                 .highlight_symbol(">> ");
@@ -399,7 +409,9 @@ fn main() -> io::Result<()> {
                         match key.code {
                             // Quit on 'q' or Ctrl+C
                             KeyCode::Char('q') => break,
-                            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => break,
+                            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                break
+                            }
 
                             // Enter: Select table in TableList mode
                             KeyCode::Enter => {
@@ -409,24 +421,37 @@ fn main() -> io::Result<()> {
                                             // Get table name from selected row (first column)
                                             if let Some(row) = display_rows.get(selected) {
                                                 if let Some(tbl_name) = row.first() {
-                                                    let query = format!("SELECT * FROM \"{}\" LIMIT 1000", tbl_name);
+                                                    let query = format!(
+                                                        "SELECT * FROM \"{}\" LIMIT 1000",
+                                                        tbl_name
+                                                    );
                                                     match db::execute_query(client, &query) {
                                                         Ok(data) => {
-                                                            if data.headers.is_empty() && data.rows.is_empty() {
-                                                                status_message = Some("Table is empty".to_string());
-                                                                status_message_time = Some(Instant::now());
+                                                            if data.headers.is_empty()
+                                                                && data.rows.is_empty()
+                                                            {
+                                                                status_message = Some(
+                                                                    "Table is empty".to_string(),
+                                                                );
+                                                                status_message_time =
+                                                                    Some(Instant::now());
                                                             } else {
-                                                                current_table_name = Some(tbl_name.clone());
+                                                                current_table_name =
+                                                                    Some(tbl_name.clone());
                                                                 table_data = data;
-                                                                widths = calculate_widths(&table_data);
-                                                                table_state = TableState::default().with_selected(Some(0));
+                                                                widths =
+                                                                    calculate_widths(&table_data);
+                                                                table_state = TableState::default()
+                                                                    .with_selected(Some(0));
                                                                 filter_text.clear();
                                                                 view_mode = ViewMode::TableData;
                                                             }
                                                         }
                                                         Err(e) => {
-                                                            status_message = Some(format!("Error: {}", e));
-                                                            status_message_time = Some(Instant::now());
+                                                            status_message =
+                                                                Some(format!("Error: {}", e));
+                                                            status_message_time =
+                                                                Some(Instant::now());
                                                         }
                                                     }
                                                 }
@@ -456,7 +481,8 @@ fn main() -> io::Result<()> {
                                     current_mode = AppMode::QueryInput;
                                     input_buffer.clear();
                                 } else {
-                                    status_message = Some("Query mode requires --connect".to_string());
+                                    status_message =
+                                        Some("Query mode requires --connect".to_string());
                                     status_message_time = Some(Instant::now());
                                 }
                             }
@@ -492,7 +518,9 @@ fn main() -> io::Result<()> {
                             }
 
                             // Horizontal column navigation
-                            KeyCode::Char('h') | KeyCode::Left => table_state.select_previous_column(),
+                            KeyCode::Char('h') | KeyCode::Left => {
+                                table_state.select_previous_column()
+                            }
                             KeyCode::Char('l') | KeyCode::Right => table_state.select_next_column(),
 
                             // Page navigation (half-page like vim, bounded by displayed count)
@@ -504,7 +532,8 @@ fn main() -> io::Result<()> {
                             }
                             KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                 if let Some(selected) = table_state.selected() {
-                                    let new_pos = (selected + 10).min(displayed_row_count.saturating_sub(1));
+                                    let new_pos =
+                                        (selected + 10).min(displayed_row_count.saturating_sub(1));
                                     table_state.select(Some(new_pos));
                                 }
                             }
@@ -517,7 +546,8 @@ fn main() -> io::Result<()> {
                             }
                             KeyCode::PageDown => {
                                 if let Some(selected) = table_state.selected() {
-                                    let new_pos = (selected + 10).min(displayed_row_count.saturating_sub(1));
+                                    let new_pos =
+                                        (selected + 10).min(displayed_row_count.saturating_sub(1));
                                     table_state.select(Some(new_pos));
                                 }
                             }
@@ -543,13 +573,16 @@ fn main() -> io::Result<()> {
                                         match db::execute_query(client, query) {
                                             Ok(data) => {
                                                 if data.headers.is_empty() && data.rows.is_empty() {
-                                                    status_message = Some("Query returned no results".to_string());
+                                                    status_message = Some(
+                                                        "Query returned no results".to_string(),
+                                                    );
                                                     status_message_time = Some(Instant::now());
                                                 } else {
                                                     // Update table data and recalculate widths
                                                     table_data = data;
                                                     widths = calculate_widths(&table_data);
-                                                    table_state = TableState::default().with_selected(Some(0));
+                                                    table_state = TableState::default()
+                                                        .with_selected(Some(0));
                                                     filter_text.clear(); // Clear filter when new data loaded
                                                 }
                                             }
@@ -561,7 +594,8 @@ fn main() -> io::Result<()> {
                                     }
                                 } else {
                                     // Not in database mode
-                                    status_message = Some("Query mode requires --connect".to_string());
+                                    status_message =
+                                        Some("Query mode requires --connect".to_string());
                                     status_message_time = Some(Instant::now());
                                 }
                                 current_mode = AppMode::Normal;

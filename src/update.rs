@@ -220,13 +220,13 @@ pub fn do_update() -> Result<(), String> {
     println!("OK");
 
     // Get current executable path
-    let current_exe = env::current_exe().map_err(|e| format!("Failed to get current exe: {}", e))?;
+    let current_exe =
+        env::current_exe().map_err(|e| format!("Failed to get current exe: {}", e))?;
     println!("Replacing: {}", current_exe.display());
 
     // Write to temp file first
     let temp_path = current_exe.with_extension("new");
-    fs::write(&temp_path, &binary_data)
-        .map_err(|e| format!("Failed to write temp file: {}", e))?;
+    fs::write(&temp_path, &binary_data).map_err(|e| format!("Failed to write temp file: {}", e))?;
 
     // Set executable permission on Unix
     #[cfg(unix)]
