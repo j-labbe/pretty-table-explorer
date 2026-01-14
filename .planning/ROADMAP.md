@@ -7,6 +7,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-01-14)
+- 🚧 **v1.1 Distribution** — Phases 5-6 (in progress)
 
 ## Completed Milestones
 
@@ -22,6 +23,31 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
+### 🚧 v1.1 Distribution (In Progress)
+
+**Milestone Goal:** Make the tool easy to install and keep updated with multi-platform releases, an install script, and self-update capability.
+
+#### Phase 5: Release Infrastructure
+
+**Goal**: GitHub Actions workflow for multi-platform builds, version embedding (--version flag), release asset naming
+**Depends on**: v1.0 MVP complete
+**Research**: Likely (GitHub Actions cross-compilation patterns for Rust)
+**Research topics**: Cross-compilation targets for Linux/macOS x86_64/ARM64, release workflow patterns
+**Plans**: TBD
+
+Plans:
+- [ ] 05-01: TBD (run /gsd:plan-phase 5 to break down)
+
+#### Phase 6: Installation & Updates
+
+**Goal**: Install script (curl | bash), self-update command, platform detection logic
+**Depends on**: Phase 5
+**Research**: Unlikely (shell scripting, standard patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 06-01: TBD (run /gsd:plan-phase 6 to break down)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -30,6 +56,8 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 | 2. Table Rendering | v1.0 | 2/2 | Complete | 2026-01-13 |
 | 3. Navigation | v1.0 | 2/2 | Complete | 2026-01-13 |
 | 4. PostgreSQL Integration | v1.0 | 2/2 | Complete | 2026-01-13 |
+| 5. Release Infrastructure | v1.1 | 0/? | Not started | - |
+| 6. Installation & Updates | v1.1 | 0/? | Not started | - |
 
 ## Domain Expertise
 

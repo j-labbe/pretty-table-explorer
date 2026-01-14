@@ -5,22 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-01-14)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** v1.0 MVP shipped — planning next milestone
+**Current focus:** v1.1 Distribution — multi-platform releases, install script, self-update
 
 ## Current Position
 
-Phase: 4 of 4 (PostgreSQL Integration)
-Plan: 2 of 2 in current phase
-Status: v1.0 MVP shipped
-Last activity: 2026-01-14 — v1.0 milestone complete
+Phase: 5 of 6 (Release Infrastructure)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-01-14 — Milestone v1.1 created
 
-Progress: ██████████ 100%
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone Status
 
 - ✅ v1.0 MVP — shipped 2026-01-14
   - Phases 1-4 complete (8 plans)
   - See: .planning/MILESTONES.md
+- 🚧 v1.1 Distribution — in progress
+  - Phases 5-6 (0 plans completed)
 
 ## Performance Metrics
 
@@ -53,8 +55,13 @@ None yet.
 
 None yet.
 
+### Roadmap Evolution
+
+- Milestone v1.0 created: MVP functionality, 4 phases (Phase 1-4)
+- Milestone v1.1 created: Distribution, 2 phases (Phase 5-6)
+
 ## Session Continuity
 
 Last session: 2026-01-14
-Stopped at: v1.0 milestone complete
+Stopped at: Milestone v1.1 initialization
 Resume file: None
