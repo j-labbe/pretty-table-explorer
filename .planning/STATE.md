@@ -2,19 +2,25 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-13)
+See: .planning/PROJECT.md (updated 2026-01-14)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** Phase 4 — PostgreSQL Integration (Complete)
+**Current focus:** v1.0 MVP shipped — planning next milestone
 
 ## Current Position
 
 Phase: 4 of 4 (PostgreSQL Integration)
 Plan: 2 of 2 in current phase
-Status: Milestone complete
-Last activity: 2026-01-13 — Completed Phase 4 via sequential execution (04-01 → 04-02)
+Status: v1.0 MVP shipped
+Last activity: 2026-01-14 — v1.0 milestone complete
 
 Progress: ██████████ 100%
+
+## Milestone Status
+
+- ✅ v1.0 MVP — shipped 2026-01-14
+  - Phases 1-4 complete (8 plans)
+  - See: .planning/MILESTONES.md
 
 ## Performance Metrics
 
@@ -32,25 +38,12 @@ Progress: ██████████ 100%
 | 3. Navigation | 2 | 8 min | 4 min |
 | 4. PostgreSQL Integration | 2 | 8 min | 4 min |
 
-**Recent Trend:**
-- Last 5 plans: 02-02 (4 min), 03-01 (4 min), 03-02 (4 min), 04-01 (4 min), 04-02 (4 min)
-- Trend: Stable
-
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- **01-01**: Use Rust 2021 edition, pin ratatui v0.29 + crossterm v0.28
-- **01-02**: 250ms poll timeout for responsive event handling, panic hook for crash recovery
-- **02-01**: use-dev-tty feature for crossterm to enable keyboard input when stdin is piped
-- **02-02**: Column width calculation with +1 padding, bold yellow header styling
-- **03-01**: TableState with selection, render_stateful_widget pattern, hjkl/arrow navigation
-- **03-02**: Ctrl+U/D page navigation (10 rows), position indicator "Row X/Y Col Z/N"
-- **04-01**: Sync postgres crate (v0.19) for DB connection, dual-mode operation (stdin vs --connect)
-- **04-02**: AppMode enum for Normal/QueryInput/SearchInput, ':' for SQL queries, '/' for row filter
+See milestone archive: .planning/milestones/v1.0-ROADMAP.md
 
 ### Deferred Issues
 
@@ -62,6 +55,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-13
-Stopped at: Milestone complete - all 4 phases finished
+Last session: 2026-01-14
+Stopped at: v1.0 milestone complete
 Resume file: None
