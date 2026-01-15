@@ -286,6 +286,21 @@ fn main() -> io::Result<()> {
 
     // Main event loop
     loop {
+        // Build tab bar string BEFORE getting mutable reference to tab
+        // (only shown when multiple tabs exist)
+        let tab_bar = if workspace.tab_count() > 1 {
+            let names: Vec<String> = workspace.tabs.iter().enumerate().map(|(i, t)| {
+                if i == workspace.active_idx {
+                    format!("[{}]", t.name)
+                } else {
+                    t.name.clone()
+                }
+            }).collect();
+            format!("{} | ", names.join(" "))
+        } else {
+            String::new()
+        };
+
         // Get active tab for this iteration (must exist since we added one above)
         let tab = workspace.active_tab_mut().unwrap();
 
@@ -474,8 +489,8 @@ fn main() -> io::Result<()> {
             };
 
             let title = format!(
-                " {}{}{} {} {}{}{} ",
-                left_indicator, context_label, right_indicator, position, filter_info, status_info, controls
+                " {}{}{}{} {} {}{}{} ",
+                tab_bar, left_indicator, context_label, right_indicator, position, filter_info, status_info, controls
             );
 
             // Create header row with bold style (only columns in scroll window)
