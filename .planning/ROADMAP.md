@@ -37,7 +37,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 **Milestone Goal:** Enhanced table interaction with column controls, data export, and multi-table workflows.
 
-#### Phase 7: Column Controls
+#### Phase 7: Column Controls — COMPLETE 2026-01-15
 
 **Goal**: Resize, hide, and reorder columns (view-only modifications)
 **Depends on**: Phase 6 (v1.1 complete)
@@ -45,9 +45,9 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 **Plans**: 3
 
 Plans:
-- [ ] 07-01: Column state and width resizing (+/- keys)
-- [ ] 07-02: Column hide/show (H/S keys)
-- [ ] 07-03: Column reordering (</> keys)
+- [x] 07-01: Column state and width resizing (+/- keys)
+- [x] 07-02: Column hide/show (H/S keys)
+- [x] 07-03: Column reordering (</> keys)
 
 #### Phase 8: Data Export
 
@@ -79,7 +79,7 @@ Plans:
 | 4. PostgreSQL Integration | v1.0 | 2/2 | Complete | 2026-01-13 |
 | 5. Release Infrastructure | v1.1 | 2/2 | Complete | 2026-01-14 |
 | 6. Installation & Updates | v1.1 | 2/2 | Complete | 2026-01-14 |
-| 7. Column Controls | v1.2 | 0/3 | Planned | - |
+| 7. Column Controls | v1.2 | 3/3 | Complete | 2026-01-15 |
 | 8. Data Export | v1.2 | 0/? | Not started | - |
 | 9. Multiple Tables | v1.2 | 0/? | Not started | - |
 
