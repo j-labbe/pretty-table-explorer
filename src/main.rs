@@ -71,6 +71,36 @@ enum PendingAction {
     CreateTab { name: String, data: TableData },
 }
 
+/// Data needed to render a single table pane.
+struct PaneRenderData {
+    /// Tab name
+    name: String,
+    /// Filtered display rows (copies for render closure)
+    display_rows: Vec<Vec<String>>,
+    /// Headers
+    headers: Vec<String>,
+    /// Total rows (before filter)
+    total_rows: usize,
+    /// Displayed row count (after filter)
+    displayed_row_count: usize,
+    /// Visible column indices
+    visible_cols: Vec<usize>,
+    /// Column widths
+    widths: Vec<Constraint>,
+    /// Filter text
+    filter_text: String,
+    /// Scroll column offset
+    scroll_col_offset: usize,
+    /// Selected visible column
+    selected_visible_col: usize,
+    /// Visible column count
+    visible_count: usize,
+    /// Hidden column count
+    hidden_count: usize,
+    /// Selected row
+    selected_row: Option<usize>,
+}
+
 /// Initialize the terminal for TUI rendering.
 /// Enables raw mode, enters alternate screen, and creates a Terminal instance.
 fn init_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
@@ -138,6 +168,201 @@ fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<Cons
             Constraint::Length(w)
         })
         .collect()
+}
+
+/// Build render data for a tab.
+fn build_pane_render_data(tab: &workspace::Tab) -> PaneRenderData {
+    // Calculate widths using tab's data and config
+    let widths = calculate_widths(&tab.data, Some(&tab.column_config));
+
+    // Get visible column indices
+    let visible_cols = tab.column_config.visible_indices();
+    let visible_count = tab.column_config.visible_count();
+    let hidden_count = tab.data.headers.len() - visible_count;
+
+    // Calculate filtered rows
+    let filter_lower = tab.filter_text.to_lowercase();
+    let display_rows: Vec<Vec<String>> = if tab.filter_text.is_empty() {
+        tab.data.rows.clone()
+    } else {
+        tab.data
+            .rows
+            .iter()
+            .filter(|row| {
+                row.iter()
+                    .any(|cell| cell.to_lowercase().contains(&filter_lower))
+            })
+            .cloned()
+            .collect()
+    };
+
+    PaneRenderData {
+        name: tab.name.clone(),
+        total_rows: tab.data.rows.len(),
+        displayed_row_count: display_rows.len(),
+        display_rows,
+        headers: tab.data.headers.clone(),
+        visible_cols,
+        widths,
+        filter_text: tab.filter_text.clone(),
+        scroll_col_offset: tab.scroll_col_offset,
+        selected_visible_col: tab.selected_visible_col,
+        visible_count,
+        hidden_count,
+        selected_row: tab.table_state.selected(),
+    }
+}
+
+/// Render a single table pane.
+fn render_table_pane(
+    frame: &mut Frame,
+    area: Rect,
+    pane: &PaneRenderData,
+    title: String,
+    is_focused: bool,
+    table_state: &mut TableState,
+    last_visible_col_idx: &StdCell<usize>,
+) {
+    // Calculate available width for columns (subtract borders and highlight symbol)
+    let available_width = area.width.saturating_sub(2 + 3); // 2 for borders, 3 for ">> "
+
+    // Determine which columns fit in the viewport starting from scroll_col_offset
+    let mut render_cols: Vec<usize> = Vec::new();
+    let mut cumulative_width: u16 = 0;
+    let mut last_render_idx = pane.scroll_col_offset;
+
+    for (vis_idx, &data_idx) in pane.visible_cols.iter().enumerate().skip(pane.scroll_col_offset) {
+        let col_width = match pane.widths.get(data_idx) {
+            Some(Constraint::Length(w)) => *w,
+            _ => 10, // fallback
+        };
+        if cumulative_width + col_width <= available_width || render_cols.is_empty() {
+            // Always include at least one column
+            render_cols.push(data_idx);
+            cumulative_width += col_width + 1; // +1 for column separator
+            last_render_idx = vis_idx;
+        } else {
+            break;
+        }
+    }
+
+    // Track overflow states
+    let has_left_overflow = pane.scroll_col_offset > 0;
+    let has_right_overflow = last_render_idx + 1 < pane.visible_cols.len();
+
+    // Update last visible column index for scroll-right detection in next frame
+    if is_focused {
+        last_visible_col_idx.set(last_render_idx);
+    }
+
+    // Calculate relative column position for table_state
+    let render_col_position = pane.selected_visible_col.saturating_sub(pane.scroll_col_offset);
+    // Clamp to render_cols range
+    let render_col_position = render_col_position.min(render_cols.len().saturating_sub(1));
+
+    // Build overflow indicators
+    let left_indicator = if has_left_overflow { "◀" } else { "" };
+    let right_indicator = if has_right_overflow { "▶" } else { "" };
+
+    // Build final title with overflow indicators
+    let full_title = format!(" {}{}{} {} ", left_indicator, title, right_indicator, " ");
+
+    // Create header row with bold style (only columns in scroll window)
+    let header_cells = render_cols.iter().map(|&i| {
+        Cell::from(pane.headers[i].as_str())
+            .style(Style::default().add_modifier(Modifier::BOLD))
+    });
+    let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
+
+    // Create data rows from filtered set (only columns in scroll window)
+    let data_rows = pane.display_rows.iter().map(|row| {
+        let cells = render_cols.iter().map(|&i| {
+            Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
+        });
+        Row::new(cells)
+    });
+
+    // Build widths for columns in scroll window
+    let render_widths: Vec<Constraint> = render_cols
+        .iter()
+        .map(|&i| pane.widths[i])
+        .collect();
+
+    // Build border style based on focus
+    let border_style = if is_focused {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+
+    // Build table with calculated widths
+    let table = Table::new(data_rows, render_widths)
+        .header(header_row)
+        .block(
+            Block::default()
+                .title(full_title)
+                .borders(Borders::ALL)
+                .border_style(border_style),
+        )
+        .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+        .column_highlight_style(Style::default().fg(Color::Cyan))
+        .highlight_symbol(">> ");
+
+    // Sync table_state's column selection with our scroll-aware position
+    table_state.select_column(Some(render_col_position));
+
+    frame.render_stateful_widget(table, area, table_state);
+}
+
+/// Build a title for a pane in split view.
+fn build_pane_title(
+    pane: &PaneRenderData,
+    _table_name: &Option<String>,
+    _view_mode: ViewMode,
+    is_focused: bool,
+) -> String {
+    // Build position info
+    let row_info = pane.selected_row
+        .map(|r| {
+            if pane.filter_text.is_empty() {
+                format!("Row {}/{}", r + 1, pane.total_rows)
+            } else {
+                format!(
+                    "Row {}/{} (from {})",
+                    r + 1,
+                    pane.displayed_row_count,
+                    pane.total_rows
+                )
+            }
+        })
+        .unwrap_or_default();
+
+    let hidden_info = if pane.hidden_count > 0 {
+        format!(" ({} hid)", pane.hidden_count)
+    } else {
+        String::new()
+    };
+    let col_info = if !pane.visible_cols.is_empty() {
+        format!(" C{}/{}{}", pane.selected_visible_col + 1, pane.visible_count, hidden_info)
+    } else {
+        String::new()
+    };
+
+    let position = if row_info.is_empty() {
+        String::new()
+    } else {
+        format!("[{}{}]", row_info, col_info)
+    };
+
+    let filter_info = if !pane.filter_text.is_empty() {
+        format!(" /{}", pane.filter_text)
+    } else {
+        String::new()
+    };
+
+    let focus_indicator = if is_focused { "*" } else { "" };
+
+    format!("{}{} {}{}", focus_indicator, pane.name, position, filter_info)
 }
 
 /// Print usage information and exit.
@@ -297,6 +522,7 @@ fn main() -> io::Result<()> {
         // (only shown when multiple tabs exist)
         // Format: "1:name 2:name [3:active] 4:name | " with numbers matching keyboard shortcuts
         let tab_count = workspace.tab_count();
+        let is_split = workspace.split_active && tab_count > 1;
         let tab_bar = if tab_count > 1 {
             let names: Vec<String> = workspace.tabs.iter().enumerate().map(|(i, t)| {
                 // Truncate long tab names to prevent title overflow
@@ -306,7 +532,10 @@ fn main() -> io::Result<()> {
                     t.name.clone()
                 };
                 // Show index number (1-based) with each tab name
-                if i == workspace.active_idx {
+                // Mark both active and split tabs in split mode
+                if is_split && i == workspace.split_idx && i != workspace.active_idx {
+                    format!("<{}:{}>", i + 1, name)
+                } else if i == workspace.active_idx {
                     format!("[{}:{}]", i + 1, name)
                 } else {
                     format!("{}:{}", i + 1, name)
@@ -317,75 +546,101 @@ fn main() -> io::Result<()> {
             String::new()
         };
 
-        // Get active tab for this iteration (must exist since we added one above)
-        let tab = workspace.active_tab_mut().unwrap();
+        // Clamp selected_visible_col and scroll_col_offset for all relevant tabs
+        // This needs to happen before building render data
+        if is_split {
+            // Handle left pane (active tab)
+            if let Some(tab) = workspace.tabs.get_mut(workspace.active_idx) {
+                let visible_cols = tab.column_config.visible_indices();
+                if !visible_cols.is_empty() {
+                    if tab.selected_visible_col >= visible_cols.len() {
+                        tab.selected_visible_col = visible_cols.len() - 1;
+                    }
+                    if tab.scroll_col_offset >= visible_cols.len() {
+                        tab.scroll_col_offset = visible_cols.len() - 1;
+                    }
+                    if tab.selected_visible_col < tab.scroll_col_offset {
+                        tab.scroll_col_offset = tab.selected_visible_col;
+                    }
+                }
+            }
+            // Handle right pane (split tab)
+            if let Some(tab) = workspace.tabs.get_mut(workspace.split_idx) {
+                let visible_cols = tab.column_config.visible_indices();
+                if !visible_cols.is_empty() {
+                    if tab.selected_visible_col >= visible_cols.len() {
+                        tab.selected_visible_col = visible_cols.len() - 1;
+                    }
+                    if tab.scroll_col_offset >= visible_cols.len() {
+                        tab.scroll_col_offset = visible_cols.len() - 1;
+                    }
+                    if tab.selected_visible_col < tab.scroll_col_offset {
+                        tab.scroll_col_offset = tab.selected_visible_col;
+                    }
+                }
+            }
+        } else {
+            // Single pane mode - handle focused tab
+            if let Some(tab) = workspace.focused_tab_mut() {
+                let visible_cols = tab.column_config.visible_indices();
+                if !visible_cols.is_empty() {
+                    if tab.selected_visible_col >= visible_cols.len() {
+                        tab.selected_visible_col = visible_cols.len() - 1;
+                    }
+                    if tab.scroll_col_offset >= visible_cols.len() {
+                        tab.scroll_col_offset = visible_cols.len() - 1;
+                    }
+                    if tab.selected_visible_col < tab.scroll_col_offset {
+                        tab.scroll_col_offset = tab.selected_visible_col;
+                    }
+                    // Scroll right if selected column is beyond last visible
+                    while tab.selected_visible_col > last_visible_col_idx.get() && tab.scroll_col_offset < visible_cols.len() - 1 {
+                        tab.scroll_col_offset += 1;
+                        last_visible_col_idx.set(tab.selected_visible_col);
+                    }
+                }
+            }
+        }
 
-        // Calculate widths using active tab's data and config
-        let widths = calculate_widths(&tab.data, Some(&tab.column_config));
+        // Build render data for panes
+        let left_pane_data = workspace.tabs.get(workspace.active_idx).map(build_pane_render_data);
+        let right_pane_data = if is_split {
+            workspace.tabs.get(workspace.split_idx).map(build_pane_render_data)
+        } else {
+            None
+        };
+
+        // Get displayed row count for navigation bounds (from focused tab)
+        let focused_pane_data = if is_split && !workspace.focus_left {
+            right_pane_data.as_ref()
+        } else {
+            left_pane_data.as_ref()
+        };
+        displayed_row_count = focused_pane_data.map(|p| p.displayed_row_count).unwrap_or(0);
 
         // Capture state needed for rendering (to avoid borrow issues)
         let mode = current_mode;
         let input_buf = input_buffer.clone();
-        let filter = tab.filter_text.clone();
         let status = status_message.clone();
-
-        // Calculate filtered rows outside draw closure so we can use count for navigation
-        let filter_lower = filter.to_lowercase();
-        let display_rows: Vec<&Vec<String>> = if filter.is_empty() {
-            tab.data.rows.iter().collect()
-        } else {
-            tab.data
-                .rows
-                .iter()
-                .filter(|row| {
-                    row.iter()
-                        .any(|cell| cell.to_lowercase().contains(&filter_lower))
-                })
-                .collect()
-        };
-
-        let total_rows = tab.data.rows.len();
-        displayed_row_count = display_rows.len();
 
         // Capture view mode for closure
         let current_view = view_mode;
         let table_name = current_table_name.clone();
 
-        // Get visible column indices for rendering
-        let visible_cols = tab.column_config.visible_indices();
-        let visible_count = tab.column_config.visible_count();
-        let hidden_count = tab.data.headers.len() - visible_count;
+        // Capture focus state
+        let focus_left = workspace.focus_left;
 
-        // Clamp selected_visible_col and scroll_col_offset to valid range
-        if !visible_cols.is_empty() {
-            if tab.selected_visible_col >= visible_cols.len() {
-                tab.selected_visible_col = visible_cols.len() - 1;
-            }
-            if tab.scroll_col_offset >= visible_cols.len() {
-                tab.scroll_col_offset = visible_cols.len() - 1;
-            }
-            // Ensure selected column is not before scroll offset
-            if tab.selected_visible_col < tab.scroll_col_offset {
-                tab.scroll_col_offset = tab.selected_visible_col;
-            }
-            // Scroll right if selected column is beyond last visible
-            // (uses last_visible_col_idx from previous frame)
-            while tab.selected_visible_col > last_visible_col_idx.get() && tab.scroll_col_offset < visible_cols.len() - 1 {
-                tab.scroll_col_offset += 1;
-                // Update to prevent infinite loop
-                last_visible_col_idx.set(tab.selected_visible_col);
-            }
-        }
-
-        // Capture scroll state for rendering
-        let scroll_col_offset = tab.scroll_col_offset;
-        let selected_visible_col = tab.selected_visible_col;
-
-        // Capture headers reference for draw closure
-        let headers = &tab.data.headers;
-
-        // Get mutable reference to table_state for rendering
-        let table_state = &mut tab.table_state;
+        // Clone table states for mutable use in render
+        let mut left_table_state = workspace.tabs.get(workspace.active_idx)
+            .map(|t| t.table_state.clone())
+            .unwrap_or_default();
+        let mut right_table_state = if is_split {
+            workspace.tabs.get(workspace.split_idx)
+                .map(|t| t.table_state.clone())
+                .unwrap_or_default()
+        } else {
+            TableState::default()
+        };
 
         terminal.draw(|frame| {
             let area = frame.area();
@@ -407,143 +662,143 @@ fn main() -> io::Result<()> {
 
             let table_area = chunks[0];
 
-            // Calculate available width for columns (subtract borders and highlight symbol)
-            let available_width = table_area.width.saturating_sub(2 + 3); // 2 for borders, 3 for ">> "
-
-            // Determine which columns fit in the viewport starting from scroll_col_offset
-            let mut render_cols: Vec<usize> = Vec::new();
-            let mut cumulative_width: u16 = 0;
-            let mut last_render_idx = scroll_col_offset;
-
-            for (vis_idx, &data_idx) in visible_cols.iter().enumerate().skip(scroll_col_offset) {
-                let col_width = match widths.get(data_idx) {
-                    Some(Constraint::Length(w)) => *w,
-                    _ => 10, // fallback
-                };
-                if cumulative_width + col_width <= available_width || render_cols.is_empty() {
-                    // Always include at least one column
-                    render_cols.push(data_idx);
-                    cumulative_width += col_width + 1; // +1 for column separator
-                    last_render_idx = vis_idx;
-                } else {
-                    break;
-                }
-            }
-
-            // Track overflow states
-            let has_left_overflow = scroll_col_offset > 0;
-            let has_right_overflow = last_render_idx + 1 < visible_cols.len();
-
-            // Update last visible column index for scroll-right detection in next frame
-            last_visible_col_idx.set(last_render_idx);
-
-            // Calculate relative column position for table_state
-            let render_col_position = selected_visible_col.saturating_sub(scroll_col_offset);
-            // Clamp to render_cols range
-            let render_col_position = render_col_position.min(render_cols.len().saturating_sub(1));
-
-            // Create dynamic title showing position
-            let row_info = table_state
-                .selected()
-                .map(|r| {
-                    if filter.is_empty() {
-                        format!("Row {}/{}", r + 1, total_rows)
-                    } else {
-                        format!(
-                            "Row {}/{} (filtered from {})",
-                            r + 1,
-                            displayed_row_count,
-                            total_rows
-                        )
-                    }
-                })
-                .unwrap_or_default();
-
-            let hidden_info = if hidden_count > 0 {
-                format!(" ({} hidden)", hidden_count)
-            } else {
-                String::new()
-            };
-            // Show global column position (selected_visible_col is 0-indexed)
-            let col_info = if !visible_cols.is_empty() {
-                format!(" Col {}/{}{}", selected_visible_col + 1, visible_count, hidden_info)
-            } else {
-                String::new()
-            };
-
-            let position = if row_info.is_empty() {
-                String::new()
-            } else {
-                format!("[{}{}] ", row_info, col_info)
-            };
-
-            // Show filter in title if active
-            let filter_info = if !filter.is_empty() {
-                format!("/{} ", filter)
-            } else {
-                String::new()
-            };
-
-            // Show status message or error in title if present
+            // Build title components
             let status_info = status
                 .as_ref()
                 .map(|s| format!("{} ", s))
                 .unwrap_or_default();
 
-            // Build overflow indicators
-            let left_indicator = if has_left_overflow { "◀ " } else { "" };
-            let right_indicator = if has_right_overflow { " ▶" } else { "" };
-
-            // Build context-appropriate title
-            // Add tab controls when multiple tabs exist (include 1-9 hint for direct selection)
-            let tab_controls = if tab_count > 1 { "1-9: tab, W: close, " } else { "" };
-            let (context_label, controls): (&str, String) = match current_view {
-                ViewMode::TableList => ("Tables", format!("{}Enter: select, /: filter, q: quit", tab_controls)),
-                ViewMode::TableData => {
-                    let label = table_name.as_deref().unwrap_or("Query Result");
-                    (label, format!("{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit", tab_controls))
-                }
-                ViewMode::PipeData => ("Data", format!("{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit", tab_controls)),
+            // Build context-appropriate controls hint
+            let split_controls = if is_split {
+                "V: unsplit, Ctrl+W: switch pane, "
+            } else if tab_count > 1 {
+                "V: split, "
+            } else {
+                ""
             };
+            let tab_controls = if tab_count > 1 { "1-9: tab, W: close, " } else { "" };
 
-            let title = format!(
-                " {}{}{}{} {} {}{}{} ",
-                tab_bar, left_indicator, context_label, right_indicator, position, filter_info, status_info, controls
-            );
+            if is_split {
+                // Split view: render two panes side by side
+                let pane_chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(table_area);
 
-            // Create header row with bold style (only columns in scroll window)
-            let header_cells = render_cols.iter().map(|&i| {
-                Cell::from(headers[i].as_str())
-                    .style(Style::default().add_modifier(Modifier::BOLD))
-            });
-            let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
+                // Render left pane (active tab)
+                if let Some(ref pane_data) = left_pane_data {
+                    let pane_title = build_pane_title(
+                        pane_data,
+                        &table_name,
+                        current_view,
+                        focus_left,
+                    );
+                    render_table_pane(
+                        frame,
+                        pane_chunks[0],
+                        pane_data,
+                        pane_title,
+                        focus_left,
+                        &mut left_table_state,
+                        &last_visible_col_idx,
+                    );
+                }
 
-            // Create data rows from filtered set (only columns in scroll window)
-            let data_rows = display_rows.iter().map(|row| {
-                let cells = render_cols.iter().map(|&i| {
-                    Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
-                });
-                Row::new(cells)
-            });
+                // Render right pane (split tab)
+                if let Some(ref pane_data) = right_pane_data {
+                    let pane_title = build_pane_title(
+                        pane_data,
+                        &table_name,
+                        current_view,
+                        !focus_left,
+                    );
+                    render_table_pane(
+                        frame,
+                        pane_chunks[1],
+                        pane_data,
+                        pane_title,
+                        !focus_left,
+                        &mut right_table_state,
+                        &last_visible_col_idx,
+                    );
+                }
 
-            // Build widths for columns in scroll window
-            let render_widths: Vec<Constraint> = render_cols
-                .iter()
-                .map(|&i| widths[i])
-                .collect();
+                // Render controls hint bar at top of table area
+                // (For split view, we show a simpler global title above both panes)
+                let controls: String = match current_view {
+                    ViewMode::TableList => format!("{}{}Enter: select, /: filter, q: quit", split_controls, tab_controls),
+                    ViewMode::TableData => format!("{}{}+/-: width, H/S: hide/show, E: export, 0: reset, Esc: back, q: quit", split_controls, tab_controls),
+                    ViewMode::PipeData => format!("{}{}+/-: width, H/S: hide/show, E: export, 0: reset, q: quit", split_controls, tab_controls),
+                };
+                // Show tab bar and status in the title (via frame title - not implemented, info in pane titles)
+                let _ = (tab_bar.clone(), status_info.clone(), controls);
+            } else {
+                // Single pane mode
+                if let Some(ref pane_data) = left_pane_data {
+                    // Build full title with tab bar, position info, filter, status, and controls
+                    let row_info = pane_data.selected_row
+                        .map(|r| {
+                            if pane_data.filter_text.is_empty() {
+                                format!("Row {}/{}", r + 1, pane_data.total_rows)
+                            } else {
+                                format!(
+                                    "Row {}/{} (filtered from {})",
+                                    r + 1,
+                                    pane_data.displayed_row_count,
+                                    pane_data.total_rows
+                                )
+                            }
+                        })
+                        .unwrap_or_default();
 
-            // Build table with calculated widths
-            let table = Table::new(data_rows, render_widths)
-                .header(header_row)
-                .block(Block::default().title(title).borders(Borders::ALL))
-                .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
-                .column_highlight_style(Style::default().fg(Color::Cyan))
-                .highlight_symbol(">> ");
+                    let hidden_info = if pane_data.hidden_count > 0 {
+                        format!(" ({} hidden)", pane_data.hidden_count)
+                    } else {
+                        String::new()
+                    };
+                    let col_info = if !pane_data.visible_cols.is_empty() {
+                        format!(" Col {}/{}{}", pane_data.selected_visible_col + 1, pane_data.visible_count, hidden_info)
+                    } else {
+                        String::new()
+                    };
 
-            // Sync table_state's column selection with our scroll-aware position
-            table_state.select_column(Some(render_col_position));
+                    let position = if row_info.is_empty() {
+                        String::new()
+                    } else {
+                        format!("[{}{}] ", row_info, col_info)
+                    };
 
-            frame.render_stateful_widget(table, table_area, &mut *table_state);
+                    let filter_info = if !pane_data.filter_text.is_empty() {
+                        format!("/{} ", pane_data.filter_text)
+                    } else {
+                        String::new()
+                    };
+
+                    let (context_label, controls): (&str, String) = match current_view {
+                        ViewMode::TableList => ("Tables", format!("{}{}Enter: select, /: filter, q: quit", split_controls, tab_controls)),
+                        ViewMode::TableData => {
+                            let label = table_name.as_deref().unwrap_or("Query Result");
+                            (label, format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit", split_controls, tab_controls))
+                        }
+                        ViewMode::PipeData => ("Data", format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit", split_controls, tab_controls)),
+                    };
+
+                    let title = format!(
+                        "{}{} {} {}{}{}",
+                        tab_bar, context_label, position, filter_info, status_info, controls
+                    );
+
+                    render_table_pane(
+                        frame,
+                        table_area,
+                        pane_data,
+                        title,
+                        true, // Always focused in single pane mode
+                        &mut left_table_state,
+                        &last_visible_col_idx,
+                    );
+                }
+            }
 
             // Render input bar when in input mode
             if show_input_bar {
@@ -574,6 +829,16 @@ fn main() -> io::Result<()> {
                 frame.render_widget(prompt_widget, prompt_area);
             }
         })?;
+
+        // Sync table states back to workspace
+        if let Some(tab) = workspace.tabs.get_mut(workspace.active_idx) {
+            tab.table_state = left_table_state;
+        }
+        if is_split {
+            if let Some(tab) = workspace.tabs.get_mut(workspace.split_idx) {
+                tab.table_state = right_table_state;
+            }
+        }
 
         // Clear status message after 3 seconds
         if let Some(msg_time) = status_message_time {
