@@ -854,8 +854,9 @@ fn main() -> io::Result<()> {
                 // Pending action for deferred tab creation (to avoid borrow conflicts)
                 let mut pending_action = PendingAction::None;
 
-                // Get fresh mutable reference to active tab for event handling
-                let tab = workspace.active_tab_mut().unwrap();
+                // Get fresh mutable reference to focused tab for event handling
+                // In split mode, this respects focus_left; otherwise it's the active tab
+                let tab = workspace.focused_tab_mut().unwrap();
 
                 match current_mode {
                     AppMode::Normal => {
@@ -1118,15 +1119,30 @@ fn main() -> io::Result<()> {
                             }
 
                             // Tab navigation: cycle with Tab/Shift+Tab
+                            // In split mode with right pane focused, changes split_idx instead
                             KeyCode::Tab => {
                                 if workspace.tab_count() > 1 {
-                                    workspace.next_tab();
+                                    if workspace.split_active && !workspace.focus_left {
+                                        // Cycle right pane through tabs
+                                        workspace.split_idx = (workspace.split_idx + 1) % workspace.tab_count();
+                                    } else {
+                                        workspace.next_tab();
+                                    }
                                 }
                             }
                             KeyCode::BackTab => {
                                 // Shift+Tab
                                 if workspace.tab_count() > 1 {
-                                    workspace.prev_tab();
+                                    if workspace.split_active && !workspace.focus_left {
+                                        // Cycle right pane through tabs (backwards)
+                                        if workspace.split_idx == 0 {
+                                            workspace.split_idx = workspace.tab_count() - 1;
+                                        } else {
+                                            workspace.split_idx -= 1;
+                                        }
+                                    } else {
+                                        workspace.prev_tab();
+                                    }
                                 }
                             }
 
@@ -1138,11 +1154,25 @@ fn main() -> io::Result<()> {
                                 }
                             }
 
-                            // Close current tab with W (uppercase)
+                            // Close focused tab with W (uppercase)
                             KeyCode::Char('W') => {
                                 if workspace.tab_count() > 1 {
-                                    workspace.close_tab(workspace.active_idx);
+                                    let idx = workspace.focused_idx();
+                                    workspace.close_tab(idx);
                                 }
+                            }
+
+                            // Toggle split view with V (uppercase)
+                            KeyCode::Char('V') => {
+                                workspace.toggle_split();
+                            }
+
+                            // Switch focus between panes with Ctrl+W or F6
+                            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                workspace.toggle_focus();
+                            }
+                            KeyCode::F(6) => {
+                                workspace.toggle_focus();
                             }
 
                             _ => {}
