@@ -288,7 +288,8 @@ fn main() -> io::Result<()> {
     loop {
         // Build tab bar string BEFORE getting mutable reference to tab
         // (only shown when multiple tabs exist)
-        let tab_bar = if workspace.tab_count() > 1 {
+        let tab_count = workspace.tab_count();
+        let tab_bar = if tab_count > 1 {
             let names: Vec<String> = workspace.tabs.iter().enumerate().map(|(i, t)| {
                 if i == workspace.active_idx {
                     format!("[{}]", t.name)
@@ -479,13 +480,15 @@ fn main() -> io::Result<()> {
             let right_indicator = if has_right_overflow { " ▶" } else { "" };
 
             // Build context-appropriate title
-            let (context_label, controls) = match current_view {
-                ViewMode::TableList => ("Tables", "Enter: select, /: filter, q: quit"),
+            // Add tab controls when multiple tabs exist
+            let tab_controls = if tab_count > 1 { "Tab: switch, W: close, " } else { "" };
+            let (context_label, controls): (&str, String) = match current_view {
+                ViewMode::TableList => ("Tables", format!("{}Enter: select, /: filter, q: quit", tab_controls)),
                 ViewMode::TableData => {
                     let label = table_name.as_deref().unwrap_or("Query Result");
-                    (label, "+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit")
+                    (label, format!("{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit", tab_controls))
                 }
-                ViewMode::PipeData => ("Data", "+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit"),
+                ViewMode::PipeData => ("Data", format!("{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit", tab_controls)),
             };
 
             let title = format!(
@@ -832,6 +835,34 @@ fn main() -> io::Result<()> {
                                 // Export available in TableData and PipeData modes
                                 if view_mode == ViewMode::TableData || view_mode == ViewMode::PipeData {
                                     current_mode = AppMode::ExportFormat;
+                                }
+                            }
+
+                            // Tab navigation: cycle with Tab/Shift+Tab
+                            KeyCode::Tab => {
+                                if workspace.tab_count() > 1 {
+                                    workspace.next_tab();
+                                }
+                            }
+                            KeyCode::BackTab => {
+                                // Shift+Tab
+                                if workspace.tab_count() > 1 {
+                                    workspace.prev_tab();
+                                }
+                            }
+
+                            // Direct tab selection with number keys 1-9
+                            KeyCode::Char(c @ '1'..='9') => {
+                                let idx = (c as usize) - ('1' as usize);
+                                if idx < workspace.tab_count() {
+                                    workspace.switch_to(idx);
+                                }
+                            }
+
+                            // Close current tab with W (uppercase)
+                            KeyCode::Char('W') => {
+                                if workspace.tab_count() > 1 {
+                                    workspace.close_tab(workspace.active_idx);
                                 }
                             }
 
