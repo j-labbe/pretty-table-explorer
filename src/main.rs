@@ -223,8 +223,16 @@ fn render_table_pane(
     table_state: &mut TableState,
     last_visible_col_idx: &StdCell<usize>,
 ) {
-    // Calculate available width for columns (subtract borders and highlight symbol)
-    let available_width = area.width.saturating_sub(2 + 3); // 2 for borders, 3 for ">> "
+    // Determine if left indicator will be shown (known before column calculation)
+    let has_left_overflow = pane.scroll_col_offset > 0;
+
+    // Calculate available width for columns (subtract borders, highlight symbol, and left indicator if present)
+    let base_width = area.width.saturating_sub(2 + 3); // 2 for borders, 3 for ">> "
+    let available_width = if has_left_overflow {
+        base_width.saturating_sub(1) // Reserve 1 char for left indicator column
+    } else {
+        base_width
+    };
 
     // Determine which columns fit in the viewport starting from scroll_col_offset
     let mut render_cols: Vec<usize> = Vec::new();
@@ -247,7 +255,6 @@ fn render_table_pane(
     }
 
     // Track overflow states
-    let has_left_overflow = pane.scroll_col_offset > 0;
     let has_right_overflow = last_render_idx + 1 < pane.visible_cols.len();
 
     // Update last visible column index for scroll-right detection in next frame
@@ -267,26 +274,52 @@ fn render_table_pane(
     // Build final title with overflow indicators
     let full_title = format!(" {}{}{} {} ", left_indicator, title, right_indicator, " ");
 
+    // Style for indicator cells
+    let indicator_style = Style::default().bg(Color::DarkGray).fg(Color::Gray);
+
     // Create header row with bold style (only columns in scroll window)
-    let header_cells = render_cols.iter().map(|&i| {
-        Cell::from(pane.headers[i].as_str())
-            .style(Style::default().add_modifier(Modifier::BOLD))
-    });
+    // Prepend left indicator cell if needed
+    let header_cells: Vec<Cell> = if has_left_overflow {
+        std::iter::once(Cell::from(" ").style(indicator_style))
+            .chain(render_cols.iter().map(|&i| {
+                Cell::from(pane.headers[i].as_str())
+                    .style(Style::default().add_modifier(Modifier::BOLD))
+            }))
+            .collect()
+    } else {
+        render_cols.iter().map(|&i| {
+            Cell::from(pane.headers[i].as_str())
+                .style(Style::default().add_modifier(Modifier::BOLD))
+        }).collect()
+    };
     let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
 
     // Create data rows from filtered set (only columns in scroll window)
-    let data_rows = pane.display_rows.iter().map(|row| {
-        let cells = render_cols.iter().map(|&i| {
-            Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
-        });
+    // Prepend left indicator cell if needed
+    let data_rows: Vec<Row> = pane.display_rows.iter().map(|row| {
+        let cells: Vec<Cell> = if has_left_overflow {
+            std::iter::once(Cell::from("◀").style(indicator_style))
+                .chain(render_cols.iter().map(|&i| {
+                    Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
+                }))
+                .collect()
+        } else {
+            render_cols.iter().map(|&i| {
+                Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
+            }).collect()
+        };
         Row::new(cells)
-    });
+    }).collect();
 
     // Build widths for columns in scroll window
-    let render_widths: Vec<Constraint> = render_cols
-        .iter()
-        .map(|&i| pane.widths[i])
-        .collect();
+    // Prepend left indicator width if needed
+    let render_widths: Vec<Constraint> = if has_left_overflow {
+        std::iter::once(Constraint::Length(1))
+            .chain(render_cols.iter().map(|&i| pane.widths[i]))
+            .collect()
+    } else {
+        render_cols.iter().map(|&i| pane.widths[i]).collect()
+    };
 
     // Build border style based on focus
     let border_style = if is_focused {
