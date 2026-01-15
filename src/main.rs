@@ -293,6 +293,11 @@ fn main() -> io::Result<()> {
         let current_view = view_mode;
         let table_name = current_table_name.clone();
 
+        // Get visible column indices for rendering
+        let visible_cols = column_config.visible_indices();
+        let visible_count = column_config.visible_count();
+        let hidden_count = table_data.headers.len() - visible_count;
+
         terminal.draw(|frame| {
             let area = frame.area();
 
@@ -329,9 +334,14 @@ fn main() -> io::Result<()> {
                 })
                 .unwrap_or_default();
 
+            let hidden_info = if hidden_count > 0 {
+                format!(" ({} hidden)", hidden_count)
+            } else {
+                String::new()
+            };
             let col_info = table_state
                 .selected_column()
-                .map(|c| format!(" Col {}/{}", c + 1, table_data.headers.len()))
+                .map(|c| format!(" Col {}/{}{}", c + 1, visible_count, hidden_info))
                 .unwrap_or_default();
 
             let position = if row_info.is_empty() {
@@ -368,20 +378,29 @@ fn main() -> io::Result<()> {
                 context_label, position, filter_info, status_info, controls
             );
 
-            // Create header row with bold style
-            let header_cells = table_data.headers.iter().map(|h| {
-                Cell::from(h.as_str()).style(Style::default().add_modifier(Modifier::BOLD))
+            // Create header row with bold style (only visible columns)
+            let header_cells = visible_cols.iter().map(|&i| {
+                Cell::from(table_data.headers[i].as_str())
+                    .style(Style::default().add_modifier(Modifier::BOLD))
             });
             let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
 
-            // Create data rows from filtered set
+            // Create data rows from filtered set (only visible columns)
             let data_rows = display_rows.iter().map(|row| {
-                let cells = row.iter().map(|c| Cell::from(c.as_str()));
+                let cells = visible_cols.iter().map(|&i| {
+                    Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
+                });
                 Row::new(cells)
             });
 
+            // Build visible widths from column config
+            let visible_widths: Vec<Constraint> = visible_cols
+                .iter()
+                .map(|&i| widths[i].clone())
+                .collect();
+
             // Build table with calculated widths
-            let table = Table::new(data_rows, widths.clone())
+            let table = Table::new(data_rows, visible_widths)
                 .header(header_row)
                 .block(Block::default().title(title).borders(Borders::ALL))
                 .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
