@@ -368,9 +368,9 @@ fn main() -> io::Result<()> {
                 ViewMode::TableList => ("Tables", "Enter: select, /: filter, q: quit"),
                 ViewMode::TableData => {
                     let label = table_name.as_deref().unwrap_or("Query Result");
-                    (label, "Esc: back, /: filter, :: query, +/-: resize col, q: quit")
+                    (label, "Esc: back, /: filter, :: query, +/-: resize, H: hide, S: show all, q: quit")
                 }
-                ViewMode::PipeData => ("Data", "/: filter, +/-: resize col, q: quit"),
+                ViewMode::PipeData => ("Data", "/: filter, +/-: resize, H: hide, S: show all, q: quit"),
             };
 
             let title = format!(
@@ -601,9 +601,33 @@ fn main() -> io::Result<()> {
                                     widths = calculate_widths(&table_data, Some(&column_config));
                                 }
                             }
-                            // Reset column widths to auto
+                            // Reset column widths to auto (also shows hidden columns)
                             KeyCode::Char('0') => {
                                 column_config.reset();
+                                widths = calculate_widths(&table_data, Some(&column_config));
+                            }
+
+                            // Hide selected column (H key, uppercase to avoid conflict with h/left)
+                            KeyCode::Char('H') => {
+                                if let Some(col) = table_state.selected_column() {
+                                    // Don't allow hiding if only one column visible
+                                    if column_config.visible_count() > 1 {
+                                        column_config.hide(col);
+                                        widths = calculate_widths(&table_data, Some(&column_config));
+                                        // If we hid the last visible column, select previous
+                                        let visible = column_config.visible_indices();
+                                        if let Some(&last_visible) = visible.last() {
+                                            if col > last_visible {
+                                                table_state.select_previous_column();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Show all hidden columns (S key)
+                            KeyCode::Char('S') => {
+                                column_config.show_all();
                                 widths = calculate_widths(&table_data, Some(&column_config));
                             }
 
