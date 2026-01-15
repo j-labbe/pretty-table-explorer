@@ -8,7 +8,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 - ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-01-14)
 - ✅ **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
-- 🚧 **v1.2 Advanced Viewing** — Phases 7-9 (in progress)
+- 🚧 **v1.2 Advanced Viewing** — Phases 7-10 (in progress)
 
 ## Completed Milestones
 
@@ -42,22 +42,23 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 **Goal**: Resize, hide, and reorder columns (view-only modifications)
 **Depends on**: Phase 6 (v1.1 complete)
 **Research**: Unlikely (internal TUI patterns)
-**Plans**: 3
+**Plans**: 4
 
 Plans:
 - [x] 07-01: Column state and width resizing (+/- keys)
 - [x] 07-02: Column hide/show (H/S keys)
 - [x] 07-03: Column reordering (</> keys)
+- [x] 07-04: Horizontal table scrolling (added during UAT)
 
-#### Phase 8: Data Export
+#### Phase 8: Data Export — COMPLETE 2026-01-15
 
 **Goal**: Export current table view to CSV and JSON formats
 **Depends on**: Phase 7
 **Research**: Unlikely (standard serialization patterns)
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 08-01: TBD (run /gsd:plan-phase 8 to break down)
+- [x] 08-01: CSV/JSON export with format selection and column visibility
 
 #### Phase 9: Multiple Tables
 
@@ -69,6 +70,16 @@ Plans:
 Plans:
 - [ ] 09-01: TBD (run /gsd:plan-phase 9 to break down)
 
+#### Phase 10: Scroll Indicators
+
+**Goal**: Visual arrow columns on table edges indicating horizontal scroll availability
+**Depends on**: Phase 9
+**Research**: Unlikely (TUI rendering patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD (run /gsd:plan-phase 10 to break down)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -79,9 +90,10 @@ Plans:
 | 4. PostgreSQL Integration | v1.0 | 2/2 | Complete | 2026-01-13 |
 | 5. Release Infrastructure | v1.1 | 2/2 | Complete | 2026-01-14 |
 | 6. Installation & Updates | v1.1 | 2/2 | Complete | 2026-01-14 |
-| 7. Column Controls | v1.2 | 3/3 | Complete | 2026-01-15 |
-| 8. Data Export | v1.2 | 0/? | Not started | - |
+| 7. Column Controls | v1.2 | 4/4 | Complete | 2026-01-15 |
+| 8. Data Export | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 9. Multiple Tables | v1.2 | 0/? | Not started | - |
+| 10. Scroll Indicators | v1.2 | 0/? | Not started | - |
 
 ## Domain Expertise
 
