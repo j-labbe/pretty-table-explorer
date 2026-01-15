@@ -27,7 +27,10 @@ pub fn export_table(
     }
 }
 
-/// Export to CSV format
+/// UTF-8 BOM (Byte Order Mark) for Excel compatibility
+const UTF8_BOM: &str = "\u{FEFF}";
+
+/// Export to CSV format with UTF-8 BOM for Excel compatibility
 fn export_csv(data: &TableData, visible_cols: &[usize]) -> Result<String, String> {
     let mut wtr = csv::Writer::from_writer(Vec::new());
 
@@ -53,7 +56,11 @@ fn export_csv(data: &TableData, visible_cols: &[usize]) -> Result<String, String
         .into_inner()
         .map_err(|e| format!("Failed to finalize CSV: {}", e))?;
 
-    String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8 in CSV output: {}", e))
+    let csv_content =
+        String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8 in CSV output: {}", e))?;
+
+    // Prepend UTF-8 BOM for Excel compatibility
+    Ok(format!("{}{}", UTF8_BOM, csv_content))
 }
 
 /// Export to JSON format (array of objects)
