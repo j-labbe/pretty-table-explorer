@@ -42,10 +42,12 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 **Goal**: Resize, hide, and reorder columns (view-only modifications)
 **Depends on**: Phase 6 (v1.1 complete)
 **Research**: Unlikely (internal TUI patterns)
-**Plans**: TBD
+**Plans**: 3
 
 Plans:
-- [ ] 07-01: TBD (run /gsd:plan-phase 7 to break down)
+- [ ] 07-01: Column state and width resizing (+/- keys)
+- [ ] 07-02: Column hide/show (H/S keys)
+- [ ] 07-03: Column reordering (</> keys)
 
 #### Phase 8: Data Export
 
@@ -77,7 +79,7 @@ Plans:
 | 4. PostgreSQL Integration | v1.0 | 2/2 | Complete | 2026-01-13 |
 | 5. Release Infrastructure | v1.1 | 2/2 | Complete | 2026-01-14 |
 | 6. Installation & Updates | v1.1 | 2/2 | Complete | 2026-01-14 |
-| 7. Column Controls | v1.2 | 0/? | Not started | - |
+| 7. Column Controls | v1.2 | 0/3 | Planned | - |
 | 8. Data Export | v1.2 | 0/? | Not started | - |
 | 9. Multiple Tables | v1.2 | 0/? | Not started | - |
 
