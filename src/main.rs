@@ -631,6 +631,42 @@ fn main() -> io::Result<()> {
                                 widths = calculate_widths(&table_data, Some(&column_config));
                             }
 
+                            // Move column left (<)
+                            KeyCode::Char('<') | KeyCode::Char(',') => {
+                                if let Some(col) = table_state.selected_column() {
+                                    let visible = column_config.visible_indices();
+                                    if col > 0 && col < visible.len() {
+                                        // Swap this column with previous in display order
+                                        let this_idx = visible[col];
+                                        let prev_idx = visible[col - 1];
+                                        let this_pos = column_config.display_position(this_idx).unwrap();
+                                        let prev_pos = column_config.display_position(prev_idx).unwrap();
+                                        // Direct swap in display_order vec
+                                        column_config.swap_display(this_pos, prev_pos);
+                                        widths = calculate_widths(&table_data, Some(&column_config));
+                                        table_state.select_previous_column();
+                                    }
+                                }
+                            }
+
+                            // Move column right (>)
+                            KeyCode::Char('>') | KeyCode::Char('.') => {
+                                if let Some(col) = table_state.selected_column() {
+                                    let visible = column_config.visible_indices();
+                                    if col + 1 < visible.len() {
+                                        // Swap this column with next in display order
+                                        let this_idx = visible[col];
+                                        let next_idx = visible[col + 1];
+                                        let this_pos = column_config.display_position(this_idx).unwrap();
+                                        let next_pos = column_config.display_position(next_idx).unwrap();
+                                        // Direct swap in display_order vec
+                                        column_config.swap_display(this_pos, next_pos);
+                                        widths = calculate_widths(&table_data, Some(&column_config));
+                                        table_state.select_next_column();
+                                    }
+                                }
+                            }
+
                             _ => {}
                         }
                     }
