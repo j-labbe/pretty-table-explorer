@@ -3,6 +3,7 @@ mod db;
 mod export;
 mod parser;
 mod update;
+mod workspace;
 
 use std::cell::Cell as StdCell;
 use std::io::{self, Read};
@@ -11,6 +12,7 @@ use std::time::{Duration, Instant};
 use clap::{Parser, Subcommand};
 use column::ColumnConfig;
 use parser::TableData;
+use workspace::Workspace;
 
 /// Interactive terminal table viewer for PostgreSQL
 #[derive(Parser, Debug)]
@@ -176,7 +178,7 @@ fn main() -> io::Result<()> {
     }
 
     // Get table data, database client, and view mode from either database or stdin
-    let (mut table_data, mut db_client, mut view_mode) =
+    let (table_data, mut db_client, mut view_mode) =
         if let Some((conn_string, query, has_custom_query)) = db_config {
             // Direct database connection mode
             match db::connect(&conn_string) {
@@ -246,26 +248,22 @@ fn main() -> io::Result<()> {
     // Track current table name when viewing table data
     let mut current_table_name: Option<String> = None;
 
-    // Column configuration for width overrides
-    let mut column_config = ColumnConfig::new(table_data.headers.len());
-
-    // Horizontal scroll offset (index into visible columns, not data columns)
-    let mut scroll_col_offset: usize = 0;
-
-    // Selected column index within visible_cols (global position, not render position)
-    let mut selected_visible_col: usize = 0;
+    // Create workspace and add initial tab
+    let mut workspace = Workspace::new();
+    let tab_name = match view_mode {
+        ViewMode::TableList => "Tables".to_string(),
+        ViewMode::TableData => current_table_name.clone().unwrap_or_else(|| "Query".to_string()),
+        ViewMode::PipeData => "Data".to_string(),
+    };
+    workspace.add_tab(tab_name, table_data);
 
     // Last visible column index from previous render (for scroll-right detection)
     // Using StdCell to allow updating from within the draw closure
     let last_visible_col_idx: StdCell<usize> = StdCell::new(0);
 
-    // Calculate column widths (recalculated when data changes)
-    let mut widths = calculate_widths(&table_data, Some(&column_config));
-
     // Application state for input modes
     let mut current_mode = AppMode::Normal;
     let mut input_buffer = String::new();
-    let mut filter_text = String::new();
     let mut status_message: Option<String> = None;
     let mut status_message_time: Option<Instant> = None;
 
@@ -282,27 +280,30 @@ fn main() -> io::Result<()> {
 
     let mut terminal = init_terminal()?;
 
-    // Initialize table state with first row selected
-    let mut table_state = TableState::default().with_selected(Some(0));
-
     // Track the count of displayed rows for navigation bounds
     #[allow(unused_assignments)]
     let mut displayed_row_count = 0;
 
     // Main event loop
     loop {
+        // Get active tab for this iteration (must exist since we added one above)
+        let tab = workspace.active_tab_mut().unwrap();
+
+        // Calculate widths using active tab's data and config
+        let widths = calculate_widths(&tab.data, Some(&tab.column_config));
+
         // Capture state needed for rendering (to avoid borrow issues)
         let mode = current_mode;
         let input_buf = input_buffer.clone();
-        let filter = filter_text.clone();
+        let filter = tab.filter_text.clone();
         let status = status_message.clone();
 
         // Calculate filtered rows outside draw closure so we can use count for navigation
         let filter_lower = filter.to_lowercase();
         let display_rows: Vec<&Vec<String>> = if filter.is_empty() {
-            table_data.rows.iter().collect()
+            tab.data.rows.iter().collect()
         } else {
-            table_data
+            tab.data
                 .rows
                 .iter()
                 .filter(|row| {
@@ -312,7 +313,7 @@ fn main() -> io::Result<()> {
                 .collect()
         };
 
-        let total_rows = table_data.rows.len();
+        let total_rows = tab.data.rows.len();
         displayed_row_count = display_rows.len();
 
         // Capture view mode for closure
@@ -320,30 +321,40 @@ fn main() -> io::Result<()> {
         let table_name = current_table_name.clone();
 
         // Get visible column indices for rendering
-        let visible_cols = column_config.visible_indices();
-        let visible_count = column_config.visible_count();
-        let hidden_count = table_data.headers.len() - visible_count;
+        let visible_cols = tab.column_config.visible_indices();
+        let visible_count = tab.column_config.visible_count();
+        let hidden_count = tab.data.headers.len() - visible_count;
 
         // Clamp selected_visible_col and scroll_col_offset to valid range
         if !visible_cols.is_empty() {
-            if selected_visible_col >= visible_cols.len() {
-                selected_visible_col = visible_cols.len() - 1;
+            if tab.selected_visible_col >= visible_cols.len() {
+                tab.selected_visible_col = visible_cols.len() - 1;
             }
-            if scroll_col_offset >= visible_cols.len() {
-                scroll_col_offset = visible_cols.len() - 1;
+            if tab.scroll_col_offset >= visible_cols.len() {
+                tab.scroll_col_offset = visible_cols.len() - 1;
             }
             // Ensure selected column is not before scroll offset
-            if selected_visible_col < scroll_col_offset {
-                scroll_col_offset = selected_visible_col;
+            if tab.selected_visible_col < tab.scroll_col_offset {
+                tab.scroll_col_offset = tab.selected_visible_col;
             }
             // Scroll right if selected column is beyond last visible
             // (uses last_visible_col_idx from previous frame)
-            while selected_visible_col > last_visible_col_idx.get() && scroll_col_offset < visible_cols.len() - 1 {
-                scroll_col_offset += 1;
+            while tab.selected_visible_col > last_visible_col_idx.get() && tab.scroll_col_offset < visible_cols.len() - 1 {
+                tab.scroll_col_offset += 1;
                 // Update to prevent infinite loop
-                last_visible_col_idx.set(selected_visible_col);
+                last_visible_col_idx.set(tab.selected_visible_col);
             }
         }
+
+        // Capture scroll state for rendering
+        let scroll_col_offset = tab.scroll_col_offset;
+        let selected_visible_col = tab.selected_visible_col;
+
+        // Capture headers reference for draw closure
+        let headers = &tab.data.headers;
+
+        // Get mutable reference to table_state for rendering
+        let table_state = &mut tab.table_state;
 
         terminal.draw(|frame| {
             let area = frame.area();
@@ -469,7 +480,7 @@ fn main() -> io::Result<()> {
 
             // Create header row with bold style (only columns in scroll window)
             let header_cells = render_cols.iter().map(|&i| {
-                Cell::from(table_data.headers[i].as_str())
+                Cell::from(headers[i].as_str())
                     .style(Style::default().add_modifier(Modifier::BOLD))
             });
             let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
@@ -499,7 +510,7 @@ fn main() -> io::Result<()> {
             // Sync table_state's column selection with our scroll-aware position
             table_state.select_column(Some(render_col_position));
 
-            frame.render_stateful_widget(table, table_area, &mut table_state);
+            frame.render_stateful_widget(table, table_area, &mut *table_state);
 
             // Render input bar when in input mode
             if show_input_bar {
@@ -542,6 +553,9 @@ fn main() -> io::Result<()> {
         // Poll with 250ms timeout for responsive feel
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
+                // Get fresh mutable reference to active tab for event handling
+                let tab = workspace.active_tab_mut().unwrap();
+
                 match current_mode {
                     AppMode::Normal => {
                         match key.code {
@@ -555,8 +569,17 @@ fn main() -> io::Result<()> {
                             KeyCode::Enter => {
                                 if view_mode == ViewMode::TableList {
                                     if let Some(ref mut client) = db_client {
-                                        if let Some(selected) = table_state.selected() {
+                                        if let Some(selected) = tab.table_state.selected() {
                                             // Get table name from selected row (first column)
+                                            // Recalculate display_rows for event handling
+                                            let filter_lower = tab.filter_text.to_lowercase();
+                                            let display_rows: Vec<&Vec<String>> = if tab.filter_text.is_empty() {
+                                                tab.data.rows.iter().collect()
+                                            } else {
+                                                tab.data.rows.iter()
+                                                    .filter(|row| row.iter().any(|cell| cell.to_lowercase().contains(&filter_lower)))
+                                                    .collect()
+                                            };
                                             if let Some(row) = display_rows.get(selected) {
                                                 if let Some(tbl_name) = row.first() {
                                                     let query = format!(
@@ -576,15 +599,14 @@ fn main() -> io::Result<()> {
                                                             } else {
                                                                 current_table_name =
                                                                     Some(tbl_name.clone());
-                                                                table_data = data;
-                                                                column_config = ColumnConfig::new(table_data.headers.len());
-                                                                scroll_col_offset = 0;
-                                                                selected_visible_col = 0;
-                                                                widths =
-                                                                    calculate_widths(&table_data, Some(&column_config));
-                                                                table_state = TableState::default()
+                                                                // Update the active tab with new data
+                                                                tab.data = data;
+                                                                tab.column_config = ColumnConfig::new(tab.data.headers.len());
+                                                                tab.scroll_col_offset = 0;
+                                                                tab.selected_visible_col = 0;
+                                                                tab.table_state = TableState::default()
                                                                     .with_selected(Some(0));
-                                                                filter_text.clear();
+                                                                tab.filter_text.clear();
                                                                 view_mode = ViewMode::TableData;
                                                             }
                                                         }
@@ -606,13 +628,12 @@ fn main() -> io::Result<()> {
                             KeyCode::Esc => {
                                 if view_mode == ViewMode::TableData {
                                     if let Some(ref cached) = table_list_cache {
-                                        table_data = cached.clone();
-                                        column_config = ColumnConfig::new(table_data.headers.len());
-                                        scroll_col_offset = 0;
-                                        selected_visible_col = 0;
-                                        widths = calculate_widths(&table_data, Some(&column_config));
-                                        table_state = TableState::default().with_selected(Some(0));
-                                        filter_text.clear();
+                                        tab.data = cached.clone();
+                                        tab.column_config = ColumnConfig::new(tab.data.headers.len());
+                                        tab.scroll_col_offset = 0;
+                                        tab.selected_visible_col = 0;
+                                        tab.table_state = TableState::default().with_selected(Some(0));
+                                        tab.filter_text.clear();
                                         current_table_name = None;
                                         view_mode = ViewMode::TableList;
                                     }
@@ -639,117 +660,113 @@ fn main() -> io::Result<()> {
 
                             // Vertical navigation (bounded by displayed row count)
                             KeyCode::Char('j') | KeyCode::Down => {
-                                if let Some(selected) = table_state.selected() {
+                                if let Some(selected) = tab.table_state.selected() {
                                     if selected + 1 < displayed_row_count {
-                                        table_state.select(Some(selected + 1));
+                                        tab.table_state.select(Some(selected + 1));
                                     }
                                 }
                             }
                             KeyCode::Char('k') | KeyCode::Up => {
-                                if let Some(selected) = table_state.selected() {
+                                if let Some(selected) = tab.table_state.selected() {
                                     if selected > 0 {
-                                        table_state.select(Some(selected - 1));
+                                        tab.table_state.select(Some(selected - 1));
                                     }
                                 }
                             }
 
                             // Jump to first/last (bounded by displayed row count)
-                            KeyCode::Char('g') | KeyCode::Home => table_state.select(Some(0)),
+                            KeyCode::Char('g') | KeyCode::Home => tab.table_state.select(Some(0)),
                             KeyCode::Char('G') | KeyCode::End => {
                                 if displayed_row_count > 0 {
-                                    table_state.select(Some(displayed_row_count - 1));
+                                    tab.table_state.select(Some(displayed_row_count - 1));
                                 }
                             }
 
                             // Horizontal column navigation with scrolling
                             KeyCode::Char('h') | KeyCode::Left => {
-                                if selected_visible_col > 0 {
-                                    selected_visible_col -= 1;
+                                if tab.selected_visible_col > 0 {
+                                    tab.selected_visible_col -= 1;
                                     // Scroll left if selected column is before scroll window
-                                    if selected_visible_col < scroll_col_offset {
-                                        scroll_col_offset = selected_visible_col;
+                                    if tab.selected_visible_col < tab.scroll_col_offset {
+                                        tab.scroll_col_offset = tab.selected_visible_col;
                                     }
                                 }
                             }
                             KeyCode::Char('l') | KeyCode::Right => {
-                                let visible_cols = column_config.visible_indices();
-                                if selected_visible_col + 1 < visible_cols.len() {
-                                    selected_visible_col += 1;
+                                let visible_cols = tab.column_config.visible_indices();
+                                if tab.selected_visible_col + 1 < visible_cols.len() {
+                                    tab.selected_visible_col += 1;
                                     // Scroll right will be handled in render loop when needed
                                 }
                             }
 
                             // Page navigation (half-page like vim, bounded by displayed count)
                             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                if let Some(selected) = table_state.selected() {
+                                if let Some(selected) = tab.table_state.selected() {
                                     let new_pos = selected.saturating_sub(10);
-                                    table_state.select(Some(new_pos));
+                                    tab.table_state.select(Some(new_pos));
                                 }
                             }
                             KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                if let Some(selected) = table_state.selected() {
+                                if let Some(selected) = tab.table_state.selected() {
                                     let new_pos =
                                         (selected + 10).min(displayed_row_count.saturating_sub(1));
-                                    table_state.select(Some(new_pos));
+                                    tab.table_state.select(Some(new_pos));
                                 }
                             }
                             // Also support Page Up/Page Down
                             KeyCode::PageUp => {
-                                if let Some(selected) = table_state.selected() {
+                                if let Some(selected) = tab.table_state.selected() {
                                     let new_pos = selected.saturating_sub(10);
-                                    table_state.select(Some(new_pos));
+                                    tab.table_state.select(Some(new_pos));
                                 }
                             }
                             KeyCode::PageDown => {
-                                if let Some(selected) = table_state.selected() {
+                                if let Some(selected) = tab.table_state.selected() {
                                     let new_pos =
                                         (selected + 10).min(displayed_row_count.saturating_sub(1));
-                                    table_state.select(Some(new_pos));
+                                    tab.table_state.select(Some(new_pos));
                                 }
                             }
 
                             // Column width adjustment (+ and - keys)
                             KeyCode::Char('+') | KeyCode::Char('=') => {
-                                let visible = column_config.visible_indices();
-                                if selected_visible_col < visible.len() {
-                                    let data_idx = visible[selected_visible_col];
-                                    let auto_widths = calculate_auto_widths(&table_data);
+                                let visible = tab.column_config.visible_indices();
+                                if tab.selected_visible_col < visible.len() {
+                                    let data_idx = visible[tab.selected_visible_col];
+                                    let auto_widths = calculate_auto_widths(&tab.data);
                                     let auto_width = auto_widths.get(data_idx).copied().unwrap_or(10);
-                                    column_config.adjust_width(data_idx, 2, auto_width);
-                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                    tab.column_config.adjust_width(data_idx, 2, auto_width);
                                 }
                             }
                             KeyCode::Char('-') | KeyCode::Char('_') => {
-                                let visible = column_config.visible_indices();
-                                if selected_visible_col < visible.len() {
-                                    let data_idx = visible[selected_visible_col];
-                                    let auto_widths = calculate_auto_widths(&table_data);
+                                let visible = tab.column_config.visible_indices();
+                                if tab.selected_visible_col < visible.len() {
+                                    let data_idx = visible[tab.selected_visible_col];
+                                    let auto_widths = calculate_auto_widths(&tab.data);
                                     let auto_width = auto_widths.get(data_idx).copied().unwrap_or(10);
-                                    column_config.adjust_width(data_idx, -2, auto_width);
-                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                    tab.column_config.adjust_width(data_idx, -2, auto_width);
                                 }
                             }
                             // Reset column widths to auto (also shows hidden columns and scroll)
                             KeyCode::Char('0') => {
-                                column_config.reset();
-                                scroll_col_offset = 0;
-                                selected_visible_col = 0;
-                                widths = calculate_widths(&table_data, Some(&column_config));
+                                tab.column_config.reset();
+                                tab.scroll_col_offset = 0;
+                                tab.selected_visible_col = 0;
                             }
 
                             // Hide selected column (H key, uppercase to avoid conflict with h/left)
                             KeyCode::Char('H') => {
                                 // Don't allow hiding if only one column visible
-                                if column_config.visible_count() > 1 {
-                                    let visible = column_config.visible_indices();
-                                    if selected_visible_col < visible.len() {
-                                        let data_idx = visible[selected_visible_col];
-                                        column_config.hide(data_idx);
-                                        widths = calculate_widths(&table_data, Some(&column_config));
+                                if tab.column_config.visible_count() > 1 {
+                                    let visible = tab.column_config.visible_indices();
+                                    if tab.selected_visible_col < visible.len() {
+                                        let data_idx = visible[tab.selected_visible_col];
+                                        tab.column_config.hide(data_idx);
                                         // If we hid the last visible column, select previous
-                                        let new_visible = column_config.visible_indices();
-                                        if selected_visible_col >= new_visible.len() && selected_visible_col > 0 {
-                                            selected_visible_col -= 1;
+                                        let new_visible = tab.column_config.visible_indices();
+                                        if tab.selected_visible_col >= new_visible.len() && tab.selected_visible_col > 0 {
+                                            tab.selected_visible_col -= 1;
                                         }
                                     }
                                 }
@@ -757,44 +774,41 @@ fn main() -> io::Result<()> {
 
                             // Show all hidden columns (S key)
                             KeyCode::Char('S') => {
-                                column_config.show_all();
-                                widths = calculate_widths(&table_data, Some(&column_config));
+                                tab.column_config.show_all();
                             }
 
                             // Move column left (<)
                             KeyCode::Char('<') | KeyCode::Char(',') => {
-                                let visible = column_config.visible_indices();
-                                if selected_visible_col > 0 && selected_visible_col < visible.len() {
+                                let visible = tab.column_config.visible_indices();
+                                if tab.selected_visible_col > 0 && tab.selected_visible_col < visible.len() {
                                     // Swap this column with previous in display order
-                                    let this_idx = visible[selected_visible_col];
-                                    let prev_idx = visible[selected_visible_col - 1];
-                                    let this_pos = column_config.display_position(this_idx).unwrap();
-                                    let prev_pos = column_config.display_position(prev_idx).unwrap();
+                                    let this_idx = visible[tab.selected_visible_col];
+                                    let prev_idx = visible[tab.selected_visible_col - 1];
+                                    let this_pos = tab.column_config.display_position(this_idx).unwrap();
+                                    let prev_pos = tab.column_config.display_position(prev_idx).unwrap();
                                     // Direct swap in display_order vec
-                                    column_config.swap_display(this_pos, prev_pos);
-                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                    tab.column_config.swap_display(this_pos, prev_pos);
                                     // Selection follows the moved column
-                                    selected_visible_col -= 1;
-                                    if selected_visible_col < scroll_col_offset {
-                                        scroll_col_offset = selected_visible_col;
+                                    tab.selected_visible_col -= 1;
+                                    if tab.selected_visible_col < tab.scroll_col_offset {
+                                        tab.scroll_col_offset = tab.selected_visible_col;
                                     }
                                 }
                             }
 
                             // Move column right (>)
                             KeyCode::Char('>') | KeyCode::Char('.') => {
-                                let visible = column_config.visible_indices();
-                                if selected_visible_col + 1 < visible.len() {
+                                let visible = tab.column_config.visible_indices();
+                                if tab.selected_visible_col + 1 < visible.len() {
                                     // Swap this column with next in display order
-                                    let this_idx = visible[selected_visible_col];
-                                    let next_idx = visible[selected_visible_col + 1];
-                                    let this_pos = column_config.display_position(this_idx).unwrap();
-                                    let next_pos = column_config.display_position(next_idx).unwrap();
+                                    let this_idx = visible[tab.selected_visible_col];
+                                    let next_idx = visible[tab.selected_visible_col + 1];
+                                    let this_pos = tab.column_config.display_position(this_idx).unwrap();
+                                    let next_pos = tab.column_config.display_position(next_idx).unwrap();
                                     // Direct swap in display_order vec
-                                    column_config.swap_display(this_pos, next_pos);
-                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                    tab.column_config.swap_display(this_pos, next_pos);
                                     // Selection follows the moved column
-                                    selected_visible_col += 1;
+                                    tab.selected_visible_col += 1;
                                 }
                             }
 
@@ -832,15 +846,14 @@ fn main() -> io::Result<()> {
                                                     );
                                                     status_message_time = Some(Instant::now());
                                                 } else {
-                                                    // Update table data and recalculate widths
-                                                    table_data = data;
-                                                    column_config = ColumnConfig::new(table_data.headers.len());
-                                                    scroll_col_offset = 0;
-                                                    selected_visible_col = 0;
-                                                    widths = calculate_widths(&table_data, Some(&column_config));
-                                                    table_state = TableState::default()
+                                                    // Update active tab with new data
+                                                    tab.data = data;
+                                                    tab.column_config = ColumnConfig::new(tab.data.headers.len());
+                                                    tab.scroll_col_offset = 0;
+                                                    tab.selected_visible_col = 0;
+                                                    tab.table_state = TableState::default()
                                                         .with_selected(Some(0));
-                                                    filter_text.clear(); // Clear filter when new data loaded
+                                                    tab.filter_text.clear(); // Clear filter when new data loaded
                                                 }
                                             }
                                             Err(e) => {
@@ -884,9 +897,9 @@ fn main() -> io::Result<()> {
                             // Apply filter and return to normal mode
                             KeyCode::Enter => {
                                 // Set or clear filter based on input
-                                filter_text = input_buffer.trim().to_string();
+                                tab.filter_text = input_buffer.trim().to_string();
                                 // Reset selection to 0 when filter changes
-                                table_state = TableState::default().with_selected(Some(0));
+                                tab.table_state = TableState::default().with_selected(Some(0));
                                 current_mode = AppMode::Normal;
                                 input_buffer.clear();
                             }
@@ -944,8 +957,8 @@ fn main() -> io::Result<()> {
                                 let filename = input_buffer.trim().to_string();
                                 if !filename.is_empty() {
                                     if let Some(fmt) = export_format {
-                                        let visible_cols = column_config.visible_indices();
-                                        match export::export_table(&table_data, &visible_cols, fmt) {
+                                        let visible_cols = tab.column_config.visible_indices();
+                                        match export::export_table(&tab.data, &visible_cols, fmt) {
                                             Ok(content) => {
                                                 match export::save_to_file(&content, &filename) {
                                                     Ok(()) => {
