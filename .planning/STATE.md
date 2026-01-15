@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-14)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** All milestones complete — ready for next milestone planning
+**Current focus:** v1.2 Advanced Viewing — column controls, data export, and multi-table workflows
 
 ## Current Position
 
-Phase: 6 of 6 (all complete)
-Plan: All plans complete
-Status: v1.1 milestone archived
-Last activity: 2026-01-14 — Archived v1.1 Distribution milestone
+Phase: 7 of 9 (Column Controls)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-01-15 — Milestone v1.2 created
 
-Progress: ██████████ 100%
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone Status
 
@@ -24,6 +24,9 @@ Progress: ██████████ 100%
 - ✅ v1.1 Distribution — shipped 2026-01-14
   - Phases 5-6 complete (4 plans)
   - See: .planning/milestones/v1.1-ROADMAP.md
+- 🚧 v1.2 Advanced Viewing — in progress
+  - Phases 7-9 (? plans)
+  - Column controls, data export, multiple tables
 
 ## Performance Metrics
 
@@ -65,9 +68,10 @@ None.
 - Milestone v1.0 created: MVP functionality, 4 phases (Phase 1-4)
 - Milestone v1.1 created: Distribution, 2 phases (Phase 5-6)
 - Both milestones archived 2026-01-14
+- Milestone v1.2 created: Advanced Viewing, 3 phases (Phase 7-9)
 
 ## Session Continuity
 
-Last session: 2026-01-14
-Stopped at: v1.1 milestone archived
+Last session: 2026-01-15
+Stopped at: Milestone v1.2 initialization
 Resume file: None

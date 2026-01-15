@@ -6,8 +6,9 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 ## Milestones
 
-- **v1.0 MVP** — Phases 1-4 (shipped 2026-01-14)
-- **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
+- ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-01-14)
+- ✅ **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
+- 🚧 **v1.2 Advanced Viewing** — Phases 7-9 (in progress)
 
 ## Completed Milestones
 
@@ -32,6 +33,40 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
+### 🚧 v1.2 Advanced Viewing (In Progress)
+
+**Milestone Goal:** Enhanced table interaction with column controls, data export, and multi-table workflows.
+
+#### Phase 7: Column Controls
+
+**Goal**: Resize, hide, and reorder columns (view-only modifications)
+**Depends on**: Phase 6 (v1.1 complete)
+**Research**: Unlikely (internal TUI patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01: TBD (run /gsd:plan-phase 7 to break down)
+
+#### Phase 8: Data Export
+
+**Goal**: Export current table view to CSV and JSON formats
+**Depends on**: Phase 7
+**Research**: Unlikely (standard serialization patterns)
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: TBD (run /gsd:plan-phase 8 to break down)
+
+#### Phase 9: Multiple Tables
+
+**Goal**: Named tabs/workspaces for multiple query results + split view
+**Depends on**: Phase 8
+**Research**: Unlikely (extending existing architecture)
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD (run /gsd:plan-phase 9 to break down)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -42,6 +77,9 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 | 4. PostgreSQL Integration | v1.0 | 2/2 | Complete | 2026-01-13 |
 | 5. Release Infrastructure | v1.1 | 2/2 | Complete | 2026-01-14 |
 | 6. Installation & Updates | v1.1 | 2/2 | Complete | 2026-01-14 |
+| 7. Column Controls | v1.2 | 0/? | Not started | - |
+| 8. Data Export | v1.2 | 0/? | Not started | - |
+| 9. Multiple Tables | v1.2 | 0/? | Not started | - |
 
 ## Domain Expertise
 
