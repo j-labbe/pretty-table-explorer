@@ -20,6 +20,8 @@ impl Default for ColumnState {
 #[derive(Debug, Clone)]
 pub struct ColumnConfig {
     columns: Vec<ColumnState>,
+    /// Display order - indices into columns vec
+    display_order: Vec<usize>,
 }
 
 impl ColumnConfig {
@@ -27,6 +29,7 @@ impl ColumnConfig {
     pub fn new(num_columns: usize) -> Self {
         Self {
             columns: vec![ColumnState::default(); num_columns],
+            display_order: (0..num_columns).collect(),
         }
     }
 
@@ -36,6 +39,7 @@ impl ColumnConfig {
             col.width_override = None;
             col.visible = true;
         }
+        self.display_order = (0..self.columns.len()).collect();
     }
 
     /// Hide a column
@@ -57,13 +61,12 @@ impl ColumnConfig {
         self.columns.iter().filter(|c| c.visible).count()
     }
 
-    /// Get visible column indices in order
+    /// Get visible column indices in display order
     pub fn visible_indices(&self) -> Vec<usize> {
-        self.columns
+        self.display_order
             .iter()
-            .enumerate()
-            .filter(|(_, c)| c.visible)
-            .map(|(i, _)| i)
+            .filter(|&&i| self.columns[i].visible)
+            .copied()
             .collect()
     }
 
@@ -85,6 +88,18 @@ impl ColumnConfig {
     /// Check if column is visible
     pub fn is_visible(&self, col: usize) -> bool {
         self.columns.get(col).map(|c| c.visible).unwrap_or(false)
+    }
+
+    /// Get display position for a given column index
+    pub fn display_position(&self, col_idx: usize) -> Option<usize> {
+        self.display_order.iter().position(|&i| i == col_idx)
+    }
+
+    /// Swap two positions in display order
+    pub fn swap_display(&mut self, pos1: usize, pos2: usize) {
+        if pos1 < self.display_order.len() && pos2 < self.display_order.len() {
+            self.display_order.swap(pos1, pos2);
+        }
     }
 }
 
