@@ -30,11 +30,41 @@ impl ColumnConfig {
         }
     }
 
-    /// Reset to auto-size for all columns
+    /// Reset to auto-size for all columns and show all hidden columns
     pub fn reset(&mut self) {
         for col in &mut self.columns {
             col.width_override = None;
+            col.visible = true;
         }
+    }
+
+    /// Hide a column
+    pub fn hide(&mut self, col: usize) {
+        if col < self.columns.len() {
+            self.columns[col].visible = false;
+        }
+    }
+
+    /// Show all hidden columns
+    pub fn show_all(&mut self) {
+        for col in &mut self.columns {
+            col.visible = true;
+        }
+    }
+
+    /// Count visible columns
+    pub fn visible_count(&self) -> usize {
+        self.columns.iter().filter(|c| c.visible).count()
+    }
+
+    /// Get visible column indices in order
+    pub fn visible_indices(&self) -> Vec<usize> {
+        self.columns
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.visible)
+            .map(|(i, _)| i)
+            .collect()
     }
 
     /// Adjust width override for column (min 3, max 100)
