@@ -1,3 +1,4 @@
+mod column;
 mod db;
 mod parser;
 mod update;
@@ -6,6 +7,7 @@ use std::io::{self, Read};
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
+use column::ColumnConfig;
 use parser::TableData;
 
 /// Interactive terminal table viewer for PostgreSQL
@@ -81,7 +83,8 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io
 
 /// Calculate column widths from table data.
 /// Returns a Constraint for each column sized to fit the maximum content width.
-fn calculate_widths(data: &TableData) -> Vec<Constraint> {
+/// If a ColumnConfig is provided, uses width overrides where set.
+fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<Constraint> {
     let num_cols = data.headers.len();
     let mut widths = vec![0usize; num_cols];
 
@@ -99,10 +102,19 @@ fn calculate_widths(data: &TableData) -> Vec<Constraint> {
         }
     }
 
-    // Convert to Constraints (add 1 for padding)
+    // Convert to Constraints (add 1 for padding), respecting config overrides
     widths
         .iter()
-        .map(|w| Constraint::Length((*w + 1) as u16))
+        .enumerate()
+        .map(|(i, w)| {
+            // Check for width override in config
+            if let Some(cfg) = config {
+                if let Some(override_width) = cfg.get_width(i) {
+                    return Constraint::Length(override_width);
+                }
+            }
+            Constraint::Length((*w + 1) as u16)
+        })
         .collect()
 }
 
@@ -221,8 +233,11 @@ fn main() -> io::Result<()> {
     // Track current table name when viewing table data
     let mut current_table_name: Option<String> = None;
 
+    // Column configuration for width overrides
+    let mut column_config = ColumnConfig::new(table_data.headers.len());
+
     // Calculate column widths (recalculated when data changes)
-    let mut widths = calculate_widths(&table_data);
+    let mut widths = calculate_widths(&table_data, Some(&column_config));
 
     // Application state for input modes
     let mut current_mode = AppMode::Normal;
@@ -439,8 +454,9 @@ fn main() -> io::Result<()> {
                                                                 current_table_name =
                                                                     Some(tbl_name.clone());
                                                                 table_data = data;
+                                                                column_config = ColumnConfig::new(table_data.headers.len());
                                                                 widths =
-                                                                    calculate_widths(&table_data);
+                                                                    calculate_widths(&table_data, Some(&column_config));
                                                                 table_state = TableState::default()
                                                                     .with_selected(Some(0));
                                                                 filter_text.clear();
@@ -466,7 +482,8 @@ fn main() -> io::Result<()> {
                                 if view_mode == ViewMode::TableData {
                                     if let Some(ref cached) = table_list_cache {
                                         table_data = cached.clone();
-                                        widths = calculate_widths(&table_data);
+                                        column_config = ColumnConfig::new(table_data.headers.len());
+                                        widths = calculate_widths(&table_data, Some(&column_config));
                                         table_state = TableState::default().with_selected(Some(0));
                                         filter_text.clear();
                                         current_table_name = None;
@@ -580,7 +597,8 @@ fn main() -> io::Result<()> {
                                                 } else {
                                                     // Update table data and recalculate widths
                                                     table_data = data;
-                                                    widths = calculate_widths(&table_data);
+                                                    column_config = ColumnConfig::new(table_data.headers.len());
+                                                    widths = calculate_widths(&table_data, Some(&column_config));
                                                     table_state = TableState::default()
                                                         .with_selected(Some(0));
                                                     filter_text.clear(); // Clear filter when new data loaded
