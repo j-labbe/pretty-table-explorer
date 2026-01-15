@@ -1,8 +1,10 @@
 mod column;
 mod db;
+mod export;
 mod parser;
 mod update;
 
+use std::cell::Cell as StdCell;
 use std::io::{self, Read};
 use std::time::{Duration, Instant};
 
@@ -45,9 +47,11 @@ use ratatui::{
 /// Application mode for handling different input states.
 #[derive(Clone, Copy, PartialEq)]
 enum AppMode {
-    Normal,      // Regular table navigation
-    QueryInput,  // ':' pressed, entering SQL query
-    SearchInput, // '/' pressed, entering search filter
+    Normal,         // Regular table navigation
+    QueryInput,     // ':' pressed, entering SQL query
+    SearchInput,    // '/' pressed, entering search filter
+    ExportFormat,   // 'E' pressed, selecting export format (CSV/JSON)
+    ExportFilename, // Format selected, entering filename
 }
 
 /// View mode for database browser.
@@ -81,10 +85,9 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io
     Ok(())
 }
 
-/// Calculate column widths from table data.
-/// Returns a Constraint for each column sized to fit the maximum content width.
-/// If a ColumnConfig is provided, uses width overrides where set.
-fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<Constraint> {
+/// Calculate auto-sized column widths from table data (raw values, no overrides).
+/// Returns width for each column sized to fit the maximum content width + 1 for padding.
+fn calculate_auto_widths(data: &TableData) -> Vec<u16> {
     let num_cols = data.headers.len();
     let mut widths = vec![0usize; num_cols];
 
@@ -102,18 +105,28 @@ fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<Cons
         }
     }
 
-    // Convert to Constraints (add 1 for padding), respecting config overrides
-    widths
+    // Add 1 for padding
+    widths.iter().map(|w| (*w + 1) as u16).collect()
+}
+
+/// Calculate column widths from table data.
+/// Returns a Constraint for each column sized to fit the maximum content width.
+/// If a ColumnConfig is provided, uses width overrides where set.
+fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<Constraint> {
+    let auto_widths = calculate_auto_widths(data);
+
+    // Convert to Constraints, respecting config overrides
+    auto_widths
         .iter()
         .enumerate()
-        .map(|(i, w)| {
+        .map(|(i, &w)| {
             // Check for width override in config
             if let Some(cfg) = config {
                 if let Some(override_width) = cfg.get_width(i) {
                     return Constraint::Length(override_width);
                 }
             }
-            Constraint::Length((*w + 1) as u16)
+            Constraint::Length(w)
         })
         .collect()
 }
@@ -236,6 +249,16 @@ fn main() -> io::Result<()> {
     // Column configuration for width overrides
     let mut column_config = ColumnConfig::new(table_data.headers.len());
 
+    // Horizontal scroll offset (index into visible columns, not data columns)
+    let mut scroll_col_offset: usize = 0;
+
+    // Selected column index within visible_cols (global position, not render position)
+    let mut selected_visible_col: usize = 0;
+
+    // Last visible column index from previous render (for scroll-right detection)
+    // Using StdCell to allow updating from within the draw closure
+    let last_visible_col_idx: StdCell<usize> = StdCell::new(0);
+
     // Calculate column widths (recalculated when data changes)
     let mut widths = calculate_widths(&table_data, Some(&column_config));
 
@@ -245,6 +268,9 @@ fn main() -> io::Result<()> {
     let mut filter_text = String::new();
     let mut status_message: Option<String> = None;
     let mut status_message_time: Option<Instant> = None;
+
+    // Export state
+    let mut export_format: Option<export::ExportFormat> = None;
 
     // Set up panic hook to restore terminal on crash
     let original_hook = std::panic::take_hook();
@@ -298,12 +324,34 @@ fn main() -> io::Result<()> {
         let visible_count = column_config.visible_count();
         let hidden_count = table_data.headers.len() - visible_count;
 
+        // Clamp selected_visible_col and scroll_col_offset to valid range
+        if !visible_cols.is_empty() {
+            if selected_visible_col >= visible_cols.len() {
+                selected_visible_col = visible_cols.len() - 1;
+            }
+            if scroll_col_offset >= visible_cols.len() {
+                scroll_col_offset = visible_cols.len() - 1;
+            }
+            // Ensure selected column is not before scroll offset
+            if selected_visible_col < scroll_col_offset {
+                scroll_col_offset = selected_visible_col;
+            }
+            // Scroll right if selected column is beyond last visible
+            // (uses last_visible_col_idx from previous frame)
+            while selected_visible_col > last_visible_col_idx.get() && scroll_col_offset < visible_cols.len() - 1 {
+                scroll_col_offset += 1;
+                // Update to prevent infinite loop
+                last_visible_col_idx.set(selected_visible_col);
+            }
+        }
+
         terminal.draw(|frame| {
             let area = frame.area();
 
             // Split layout: table area + optional input bar at bottom
-            let show_input_bar = mode != AppMode::Normal;
-            let chunks = if show_input_bar {
+            let show_input_bar = mode != AppMode::Normal && mode != AppMode::ExportFormat;
+            let show_format_prompt = mode == AppMode::ExportFormat;
+            let chunks = if show_input_bar || show_format_prompt {
                 Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(3), Constraint::Length(3)])
@@ -316,6 +364,41 @@ fn main() -> io::Result<()> {
             };
 
             let table_area = chunks[0];
+
+            // Calculate available width for columns (subtract borders and highlight symbol)
+            let available_width = table_area.width.saturating_sub(2 + 3); // 2 for borders, 3 for ">> "
+
+            // Determine which columns fit in the viewport starting from scroll_col_offset
+            let mut render_cols: Vec<usize> = Vec::new();
+            let mut cumulative_width: u16 = 0;
+            let mut last_render_idx = scroll_col_offset;
+
+            for (vis_idx, &data_idx) in visible_cols.iter().enumerate().skip(scroll_col_offset) {
+                let col_width = match widths.get(data_idx) {
+                    Some(Constraint::Length(w)) => *w,
+                    _ => 10, // fallback
+                };
+                if cumulative_width + col_width <= available_width || render_cols.is_empty() {
+                    // Always include at least one column
+                    render_cols.push(data_idx);
+                    cumulative_width += col_width + 1; // +1 for column separator
+                    last_render_idx = vis_idx;
+                } else {
+                    break;
+                }
+            }
+
+            // Track overflow states
+            let has_left_overflow = scroll_col_offset > 0;
+            let has_right_overflow = last_render_idx + 1 < visible_cols.len();
+
+            // Update last visible column index for scroll-right detection in next frame
+            last_visible_col_idx.set(last_render_idx);
+
+            // Calculate relative column position for table_state
+            let render_col_position = selected_visible_col.saturating_sub(scroll_col_offset);
+            // Clamp to render_cols range
+            let render_col_position = render_col_position.min(render_cols.len().saturating_sub(1));
 
             // Create dynamic title showing position
             let row_info = table_state
@@ -339,10 +422,12 @@ fn main() -> io::Result<()> {
             } else {
                 String::new()
             };
-            let col_info = table_state
-                .selected_column()
-                .map(|c| format!(" Col {}/{}{}", c + 1, visible_count, hidden_info))
-                .unwrap_or_default();
+            // Show global column position (selected_visible_col is 0-indexed)
+            let col_info = if !visible_cols.is_empty() {
+                format!(" Col {}/{}{}", selected_visible_col + 1, visible_count, hidden_info)
+            } else {
+                String::new()
+            };
 
             let position = if row_info.is_empty() {
                 String::new()
@@ -363,49 +448,56 @@ fn main() -> io::Result<()> {
                 .map(|s| format!("{} ", s))
                 .unwrap_or_default();
 
+            // Build overflow indicators
+            let left_indicator = if has_left_overflow { "◀ " } else { "" };
+            let right_indicator = if has_right_overflow { " ▶" } else { "" };
+
             // Build context-appropriate title
             let (context_label, controls) = match current_view {
                 ViewMode::TableList => ("Tables", "Enter: select, /: filter, q: quit"),
                 ViewMode::TableData => {
                     let label = table_name.as_deref().unwrap_or("Query Result");
-                    (label, "+/-/0: width, H/S: hide/show, </>: move, Esc: back, q: quit")
+                    (label, "+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit")
                 }
-                ViewMode::PipeData => ("Data", "+/-/0: width, H/S: hide/show, </>: move, q: quit"),
+                ViewMode::PipeData => ("Data", "+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit"),
             };
 
             let title = format!(
-                " {} {} {}{}{} ",
-                context_label, position, filter_info, status_info, controls
+                " {}{}{} {} {}{}{} ",
+                left_indicator, context_label, right_indicator, position, filter_info, status_info, controls
             );
 
-            // Create header row with bold style (only visible columns)
-            let header_cells = visible_cols.iter().map(|&i| {
+            // Create header row with bold style (only columns in scroll window)
+            let header_cells = render_cols.iter().map(|&i| {
                 Cell::from(table_data.headers[i].as_str())
                     .style(Style::default().add_modifier(Modifier::BOLD))
             });
             let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
 
-            // Create data rows from filtered set (only visible columns)
+            // Create data rows from filtered set (only columns in scroll window)
             let data_rows = display_rows.iter().map(|row| {
-                let cells = visible_cols.iter().map(|&i| {
+                let cells = render_cols.iter().map(|&i| {
                     Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
                 });
                 Row::new(cells)
             });
 
-            // Build visible widths from column config
-            let visible_widths: Vec<Constraint> = visible_cols
+            // Build widths for columns in scroll window
+            let render_widths: Vec<Constraint> = render_cols
                 .iter()
-                .map(|&i| widths[i].clone())
+                .map(|&i| widths[i])
                 .collect();
 
             // Build table with calculated widths
-            let table = Table::new(data_rows, visible_widths)
+            let table = Table::new(data_rows, render_widths)
                 .header(header_row)
                 .block(Block::default().title(title).borders(Borders::ALL))
                 .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED))
                 .column_highlight_style(Style::default().fg(Color::Cyan))
                 .highlight_symbol(">> ");
+
+            // Sync table_state's column selection with our scroll-aware position
+            table_state.select_column(Some(render_col_position));
 
             frame.render_stateful_widget(table, table_area, &mut table_state);
 
@@ -415,7 +507,8 @@ fn main() -> io::Result<()> {
                 let (prefix, style) = match mode {
                     AppMode::QueryInput => (":", Style::default().fg(Color::Cyan)),
                     AppMode::SearchInput => ("/", Style::default().fg(Color::Yellow)),
-                    AppMode::Normal => ("", Style::default()),
+                    AppMode::ExportFilename => ("Save as: ", Style::default().fg(Color::Green)),
+                    AppMode::Normal | AppMode::ExportFormat => ("", Style::default()),
                 };
 
                 let input_text = format!("{}{}", prefix, input_buf);
@@ -424,6 +517,17 @@ fn main() -> io::Result<()> {
                     .block(Block::default().borders(Borders::ALL));
 
                 frame.render_widget(input_widget, input_area);
+            }
+
+            // Render format selection prompt
+            if show_format_prompt {
+                let prompt_area = chunks[1];
+                let prompt_text = "Export format: [C]SV or [J]SON (Esc to cancel)";
+                let prompt_widget = Paragraph::new(prompt_text)
+                    .style(Style::default().fg(Color::Green))
+                    .block(Block::default().borders(Borders::ALL));
+
+                frame.render_widget(prompt_widget, prompt_area);
             }
         })?;
 
@@ -474,6 +578,8 @@ fn main() -> io::Result<()> {
                                                                     Some(tbl_name.clone());
                                                                 table_data = data;
                                                                 column_config = ColumnConfig::new(table_data.headers.len());
+                                                                scroll_col_offset = 0;
+                                                                selected_visible_col = 0;
                                                                 widths =
                                                                     calculate_widths(&table_data, Some(&column_config));
                                                                 table_state = TableState::default()
@@ -502,6 +608,8 @@ fn main() -> io::Result<()> {
                                     if let Some(ref cached) = table_list_cache {
                                         table_data = cached.clone();
                                         column_config = ColumnConfig::new(table_data.headers.len());
+                                        scroll_col_offset = 0;
+                                        selected_visible_col = 0;
                                         widths = calculate_widths(&table_data, Some(&column_config));
                                         table_state = TableState::default().with_selected(Some(0));
                                         filter_text.clear();
@@ -553,11 +661,23 @@ fn main() -> io::Result<()> {
                                 }
                             }
 
-                            // Horizontal column navigation
+                            // Horizontal column navigation with scrolling
                             KeyCode::Char('h') | KeyCode::Left => {
-                                table_state.select_previous_column()
+                                if selected_visible_col > 0 {
+                                    selected_visible_col -= 1;
+                                    // Scroll left if selected column is before scroll window
+                                    if selected_visible_col < scroll_col_offset {
+                                        scroll_col_offset = selected_visible_col;
+                                    }
+                                }
                             }
-                            KeyCode::Char('l') | KeyCode::Right => table_state.select_next_column(),
+                            KeyCode::Char('l') | KeyCode::Right => {
+                                let visible_cols = column_config.visible_indices();
+                                if selected_visible_col + 1 < visible_cols.len() {
+                                    selected_visible_col += 1;
+                                    // Scroll right will be handled in render loop when needed
+                                }
+                            }
 
                             // Page navigation (half-page like vim, bounded by displayed count)
                             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -590,36 +710,46 @@ fn main() -> io::Result<()> {
 
                             // Column width adjustment (+ and - keys)
                             KeyCode::Char('+') | KeyCode::Char('=') => {
-                                if let Some(col) = table_state.selected_column() {
-                                    column_config.adjust_width(col, 2);
+                                let visible = column_config.visible_indices();
+                                if selected_visible_col < visible.len() {
+                                    let data_idx = visible[selected_visible_col];
+                                    let auto_widths = calculate_auto_widths(&table_data);
+                                    let auto_width = auto_widths.get(data_idx).copied().unwrap_or(10);
+                                    column_config.adjust_width(data_idx, 2, auto_width);
                                     widths = calculate_widths(&table_data, Some(&column_config));
                                 }
                             }
                             KeyCode::Char('-') | KeyCode::Char('_') => {
-                                if let Some(col) = table_state.selected_column() {
-                                    column_config.adjust_width(col, -2);
+                                let visible = column_config.visible_indices();
+                                if selected_visible_col < visible.len() {
+                                    let data_idx = visible[selected_visible_col];
+                                    let auto_widths = calculate_auto_widths(&table_data);
+                                    let auto_width = auto_widths.get(data_idx).copied().unwrap_or(10);
+                                    column_config.adjust_width(data_idx, -2, auto_width);
                                     widths = calculate_widths(&table_data, Some(&column_config));
                                 }
                             }
-                            // Reset column widths to auto (also shows hidden columns)
+                            // Reset column widths to auto (also shows hidden columns and scroll)
                             KeyCode::Char('0') => {
                                 column_config.reset();
+                                scroll_col_offset = 0;
+                                selected_visible_col = 0;
                                 widths = calculate_widths(&table_data, Some(&column_config));
                             }
 
                             // Hide selected column (H key, uppercase to avoid conflict with h/left)
                             KeyCode::Char('H') => {
-                                if let Some(col) = table_state.selected_column() {
-                                    // Don't allow hiding if only one column visible
-                                    if column_config.visible_count() > 1 {
-                                        column_config.hide(col);
+                                // Don't allow hiding if only one column visible
+                                if column_config.visible_count() > 1 {
+                                    let visible = column_config.visible_indices();
+                                    if selected_visible_col < visible.len() {
+                                        let data_idx = visible[selected_visible_col];
+                                        column_config.hide(data_idx);
                                         widths = calculate_widths(&table_data, Some(&column_config));
                                         // If we hid the last visible column, select previous
-                                        let visible = column_config.visible_indices();
-                                        if let Some(&last_visible) = visible.last() {
-                                            if col > last_visible {
-                                                table_state.select_previous_column();
-                                            }
+                                        let new_visible = column_config.visible_indices();
+                                        if selected_visible_col >= new_visible.len() && selected_visible_col > 0 {
+                                            selected_visible_col -= 1;
                                         }
                                     }
                                 }
@@ -633,37 +763,46 @@ fn main() -> io::Result<()> {
 
                             // Move column left (<)
                             KeyCode::Char('<') | KeyCode::Char(',') => {
-                                if let Some(col) = table_state.selected_column() {
-                                    let visible = column_config.visible_indices();
-                                    if col > 0 && col < visible.len() {
-                                        // Swap this column with previous in display order
-                                        let this_idx = visible[col];
-                                        let prev_idx = visible[col - 1];
-                                        let this_pos = column_config.display_position(this_idx).unwrap();
-                                        let prev_pos = column_config.display_position(prev_idx).unwrap();
-                                        // Direct swap in display_order vec
-                                        column_config.swap_display(this_pos, prev_pos);
-                                        widths = calculate_widths(&table_data, Some(&column_config));
-                                        table_state.select_previous_column();
+                                let visible = column_config.visible_indices();
+                                if selected_visible_col > 0 && selected_visible_col < visible.len() {
+                                    // Swap this column with previous in display order
+                                    let this_idx = visible[selected_visible_col];
+                                    let prev_idx = visible[selected_visible_col - 1];
+                                    let this_pos = column_config.display_position(this_idx).unwrap();
+                                    let prev_pos = column_config.display_position(prev_idx).unwrap();
+                                    // Direct swap in display_order vec
+                                    column_config.swap_display(this_pos, prev_pos);
+                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                    // Selection follows the moved column
+                                    selected_visible_col -= 1;
+                                    if selected_visible_col < scroll_col_offset {
+                                        scroll_col_offset = selected_visible_col;
                                     }
                                 }
                             }
 
                             // Move column right (>)
                             KeyCode::Char('>') | KeyCode::Char('.') => {
-                                if let Some(col) = table_state.selected_column() {
-                                    let visible = column_config.visible_indices();
-                                    if col + 1 < visible.len() {
-                                        // Swap this column with next in display order
-                                        let this_idx = visible[col];
-                                        let next_idx = visible[col + 1];
-                                        let this_pos = column_config.display_position(this_idx).unwrap();
-                                        let next_pos = column_config.display_position(next_idx).unwrap();
-                                        // Direct swap in display_order vec
-                                        column_config.swap_display(this_pos, next_pos);
-                                        widths = calculate_widths(&table_data, Some(&column_config));
-                                        table_state.select_next_column();
-                                    }
+                                let visible = column_config.visible_indices();
+                                if selected_visible_col + 1 < visible.len() {
+                                    // Swap this column with next in display order
+                                    let this_idx = visible[selected_visible_col];
+                                    let next_idx = visible[selected_visible_col + 1];
+                                    let this_pos = column_config.display_position(this_idx).unwrap();
+                                    let next_pos = column_config.display_position(next_idx).unwrap();
+                                    // Direct swap in display_order vec
+                                    column_config.swap_display(this_pos, next_pos);
+                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                    // Selection follows the moved column
+                                    selected_visible_col += 1;
+                                }
+                            }
+
+                            // Export data (E key)
+                            KeyCode::Char('E') => {
+                                // Export available in TableData and PipeData modes
+                                if view_mode == ViewMode::TableData || view_mode == ViewMode::PipeData {
+                                    current_mode = AppMode::ExportFormat;
                                 }
                             }
 
@@ -696,6 +835,8 @@ fn main() -> io::Result<()> {
                                                     // Update table data and recalculate widths
                                                     table_data = data;
                                                     column_config = ColumnConfig::new(table_data.headers.len());
+                                                    scroll_col_offset = 0;
+                                                    selected_visible_col = 0;
                                                     widths = calculate_widths(&table_data, Some(&column_config));
                                                     table_state = TableState::default()
                                                         .with_selected(Some(0));
@@ -748,6 +889,85 @@ fn main() -> io::Result<()> {
                                 table_state = TableState::default().with_selected(Some(0));
                                 current_mode = AppMode::Normal;
                                 input_buffer.clear();
+                            }
+
+                            // Text input
+                            KeyCode::Char(c) => {
+                                input_buffer.push(c);
+                            }
+
+                            // Backspace
+                            KeyCode::Backspace => {
+                                input_buffer.pop();
+                            }
+
+                            _ => {}
+                        }
+                    }
+
+                    AppMode::ExportFormat => {
+                        match key.code {
+                            // Cancel and return to normal mode
+                            KeyCode::Esc => {
+                                current_mode = AppMode::Normal;
+                            }
+
+                            // Select CSV format
+                            KeyCode::Char('c') | KeyCode::Char('C') => {
+                                export_format = Some(export::ExportFormat::Csv);
+                                input_buffer = "export.csv".to_string();
+                                current_mode = AppMode::ExportFilename;
+                            }
+
+                            // Select JSON format
+                            KeyCode::Char('j') | KeyCode::Char('J') => {
+                                export_format = Some(export::ExportFormat::Json);
+                                input_buffer = "export.json".to_string();
+                                current_mode = AppMode::ExportFilename;
+                            }
+
+                            _ => {}
+                        }
+                    }
+
+                    AppMode::ExportFilename => {
+                        match key.code {
+                            // Cancel and return to normal mode
+                            KeyCode::Esc => {
+                                current_mode = AppMode::Normal;
+                                input_buffer.clear();
+                                export_format = None;
+                            }
+
+                            // Perform export
+                            KeyCode::Enter => {
+                                let filename = input_buffer.trim().to_string();
+                                if !filename.is_empty() {
+                                    if let Some(fmt) = export_format {
+                                        let visible_cols = column_config.visible_indices();
+                                        match export::export_table(&table_data, &visible_cols, fmt) {
+                                            Ok(content) => {
+                                                match export::save_to_file(&content, &filename) {
+                                                    Ok(()) => {
+                                                        status_message = Some(format!("Exported to {}", filename));
+                                                        status_message_time = Some(Instant::now());
+                                                    }
+                                                    Err(e) => {
+                                                        status_message = Some(e);
+                                                        status_message_time = Some(Instant::now());
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                status_message = Some(e);
+                                                status_message_time = Some(Instant::now());
+                                            }
+                                        }
+                                    }
+                                }
+                                current_mode = AppMode::Normal;
+                                input_buffer.clear();
+                                export_format = None;
                             }
 
                             // Text input

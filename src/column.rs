@@ -71,10 +71,15 @@ impl ColumnConfig {
     }
 
     /// Adjust width override for column (min 3, max 100)
-    /// When adjusting, if override is None, start from a default of 10.
-    pub fn adjust_width(&mut self, col: usize, delta: i16) {
+    /// When adjusting, if override is None, start from the provided auto_width.
+    /// If auto_width exceeds 100, we clamp the starting point to 100 to ensure
+    /// the first adjustment decreases by the expected delta instead of jumping.
+    pub fn adjust_width(&mut self, col: usize, delta: i16, auto_width: u16) {
         if let Some(column) = self.columns.get_mut(col) {
-            let current = column.width_override.unwrap_or(10) as i16;
+            // When no override set, start from auto_width but cap at 100 (our max)
+            // This prevents a large auto_width (e.g., 150) from jumping to 100 on first minus
+            let base_width = column.width_override.unwrap_or(auto_width.min(100));
+            let current = base_width as i16;
             let new_width = (current + delta).clamp(3, 100) as u16;
             column.width_override = Some(new_width);
         }
@@ -86,6 +91,7 @@ impl ColumnConfig {
     }
 
     /// Check if column is visible
+    #[allow(dead_code)]
     pub fn is_visible(&self, col: usize) -> bool {
         self.columns.get(col).map(|c| c.visible).unwrap_or(false)
     }
@@ -120,33 +126,43 @@ mod tests {
     #[test]
     fn test_adjust_width_from_none() {
         let mut config = ColumnConfig::new(2);
-        config.adjust_width(0, 5);
-        // Starting from 10, +5 = 15
-        assert_eq!(config.get_width(0), Some(15));
+        config.adjust_width(0, 5, 20); // auto_width=20
+        // Starting from 20, +5 = 25
+        assert_eq!(config.get_width(0), Some(25));
         assert_eq!(config.get_width(1), None);
     }
 
     #[test]
     fn test_adjust_width_min_bound() {
         let mut config = ColumnConfig::new(1);
-        config.adjust_width(0, -20);
-        // Starting from 10, -20 should clamp to 3
+        config.adjust_width(0, -20, 15); // auto_width=15
+        // Starting from 15, -20 should clamp to 3
         assert_eq!(config.get_width(0), Some(3));
     }
 
     #[test]
     fn test_adjust_width_max_bound() {
         let mut config = ColumnConfig::new(1);
-        config.adjust_width(0, 200);
+        config.adjust_width(0, 200, 10); // auto_width=10
         // Starting from 10, +200 should clamp to 100
         assert_eq!(config.get_width(0), Some(100));
     }
 
     #[test]
+    fn test_adjust_width_large_auto_width() {
+        let mut config = ColumnConfig::new(1);
+        // When auto_width exceeds max (100), we start from 100 not auto_width
+        // This prevents jumping from e.g., 150 to 100 on first minus
+        config.adjust_width(0, -2, 150); // auto_width=150, but capped to 100
+        // Starting from 100 (capped), -2 = 98
+        assert_eq!(config.get_width(0), Some(98));
+    }
+
+    #[test]
     fn test_reset() {
         let mut config = ColumnConfig::new(2);
-        config.adjust_width(0, 5);
-        config.adjust_width(1, 10);
+        config.adjust_width(0, 5, 10);
+        config.adjust_width(1, 10, 10);
         config.reset();
         assert_eq!(config.get_width(0), None);
         assert_eq!(config.get_width(1), None);
