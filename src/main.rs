@@ -293,9 +293,17 @@ fn render_table_pane(
     }
 
     // Calculate relative column position for table_state
-    let render_col_position = pane.selected_visible_col.saturating_sub(pane.scroll_col_offset);
+    // This is the position within the DATA columns (not including indicator columns)
+    let data_col_position = pane.selected_visible_col.saturating_sub(pane.scroll_col_offset);
     // Clamp to render_cols range
-    let render_col_position = render_col_position.min(render_cols.len().saturating_sub(1));
+    let data_col_position = data_col_position.min(render_cols.len().saturating_sub(1));
+    // Adjust for left indicator column if present
+    // The actual column position in the rendered table needs to account for the indicator
+    let render_col_position = if has_left_overflow {
+        data_col_position + 1 // Skip the left indicator column
+    } else {
+        data_col_position
+    };
 
     // Build overflow indicators
     let left_indicator = if has_left_overflow { "◀" } else { "" };
