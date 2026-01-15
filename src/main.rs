@@ -226,13 +226,18 @@ fn render_table_pane(
     // Determine if left indicator will be shown (known before column calculation)
     let has_left_overflow = pane.scroll_col_offset > 0;
 
-    // Calculate available width for columns (subtract borders, highlight symbol, and left indicator if present)
+    // Calculate available width for columns (subtract borders, highlight symbol, and indicators if present)
+    // We need to reserve space for right indicator upfront since we don't know if we'll need it
+    // until we calculate which columns fit - use a two-pass approach
     let base_width = area.width.saturating_sub(2 + 3); // 2 for borders, 3 for ">> "
-    let available_width = if has_left_overflow {
+    let width_minus_left = if has_left_overflow {
         base_width.saturating_sub(1) // Reserve 1 char for left indicator column
     } else {
         base_width
     };
+
+    // First pass: calculate with reserved right indicator space to determine if overflow exists
+    let width_with_right_reserved = width_minus_left.saturating_sub(1);
 
     // Determine which columns fit in the viewport starting from scroll_col_offset
     let mut render_cols: Vec<usize> = Vec::new();
@@ -244,7 +249,7 @@ fn render_table_pane(
             Some(Constraint::Length(w)) => *w,
             _ => 10, // fallback
         };
-        if cumulative_width + col_width <= available_width || render_cols.is_empty() {
+        if cumulative_width + col_width <= width_with_right_reserved || render_cols.is_empty() {
             // Always include at least one column
             render_cols.push(data_idx);
             cumulative_width += col_width + 1; // +1 for column separator
@@ -254,7 +259,32 @@ fn render_table_pane(
         }
     }
 
-    // Track overflow states
+    // Check if right overflow actually exists
+    let has_right_overflow = last_render_idx + 1 < pane.visible_cols.len();
+
+    // If no right overflow, we can recalculate with the extra space
+    if !has_right_overflow && width_minus_left > width_with_right_reserved {
+        // Recalculate without right indicator reservation
+        render_cols.clear();
+        cumulative_width = 0;
+        last_render_idx = pane.scroll_col_offset;
+
+        for (vis_idx, &data_idx) in pane.visible_cols.iter().enumerate().skip(pane.scroll_col_offset) {
+            let col_width = match pane.widths.get(data_idx) {
+                Some(Constraint::Length(w)) => *w,
+                _ => 10, // fallback
+            };
+            if cumulative_width + col_width <= width_minus_left || render_cols.is_empty() {
+                render_cols.push(data_idx);
+                cumulative_width += col_width + 1;
+                last_render_idx = vis_idx;
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Recheck right overflow after potential recalculation
     let has_right_overflow = last_render_idx + 1 < pane.visible_cols.len();
 
     // Update last visible column index for scroll-right detection in next frame
@@ -278,48 +308,50 @@ fn render_table_pane(
     let indicator_style = Style::default().bg(Color::DarkGray).fg(Color::Gray);
 
     // Create header row with bold style (only columns in scroll window)
-    // Prepend left indicator cell if needed
-    let header_cells: Vec<Cell> = if has_left_overflow {
-        std::iter::once(Cell::from(" ").style(indicator_style))
-            .chain(render_cols.iter().map(|&i| {
-                Cell::from(pane.headers[i].as_str())
-                    .style(Style::default().add_modifier(Modifier::BOLD))
-            }))
-            .collect()
-    } else {
-        render_cols.iter().map(|&i| {
+    // Prepend/append indicator cells if needed
+    let mut header_cells: Vec<Cell> = Vec::new();
+    if has_left_overflow {
+        header_cells.push(Cell::from(" ").style(indicator_style));
+    }
+    for &i in &render_cols {
+        header_cells.push(
             Cell::from(pane.headers[i].as_str())
                 .style(Style::default().add_modifier(Modifier::BOLD))
-        }).collect()
-    };
+        );
+    }
+    if has_right_overflow {
+        header_cells.push(Cell::from(" ").style(indicator_style));
+    }
     let header_row = Row::new(header_cells).style(Style::default().fg(Color::Yellow));
 
     // Create data rows from filtered set (only columns in scroll window)
-    // Prepend left indicator cell if needed
+    // Prepend/append indicator cells if needed
     let data_rows: Vec<Row> = pane.display_rows.iter().map(|row| {
-        let cells: Vec<Cell> = if has_left_overflow {
-            std::iter::once(Cell::from("◀").style(indicator_style))
-                .chain(render_cols.iter().map(|&i| {
-                    Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
-                }))
-                .collect()
-        } else {
-            render_cols.iter().map(|&i| {
-                Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or(""))
-            }).collect()
-        };
+        let mut cells: Vec<Cell> = Vec::new();
+        if has_left_overflow {
+            cells.push(Cell::from("◀").style(indicator_style));
+        }
+        for &i in &render_cols {
+            cells.push(Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or("")));
+        }
+        if has_right_overflow {
+            cells.push(Cell::from("▶").style(indicator_style));
+        }
         Row::new(cells)
     }).collect();
 
     // Build widths for columns in scroll window
-    // Prepend left indicator width if needed
-    let render_widths: Vec<Constraint> = if has_left_overflow {
-        std::iter::once(Constraint::Length(1))
-            .chain(render_cols.iter().map(|&i| pane.widths[i]))
-            .collect()
-    } else {
-        render_cols.iter().map(|&i| pane.widths[i]).collect()
-    };
+    // Prepend/append indicator widths if needed
+    let mut render_widths: Vec<Constraint> = Vec::new();
+    if has_left_overflow {
+        render_widths.push(Constraint::Length(1));
+    }
+    for &i in &render_cols {
+        render_widths.push(pane.widths[i]);
+    }
+    if has_right_overflow {
+        render_widths.push(Constraint::Length(1));
+    }
 
     // Build border style based on focus
     let border_style = if is_focused {
