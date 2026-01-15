@@ -50,6 +50,12 @@ pub struct Workspace {
     pub tabs: Vec<Tab>,
     /// Index of the currently active tab
     pub active_idx: usize,
+    /// Is split view enabled
+    pub split_active: bool,
+    /// Tab index shown in right pane
+    pub split_idx: usize,
+    /// Which pane has focus (true = left/main)
+    pub focus_left: bool,
 }
 
 impl Workspace {
@@ -58,6 +64,9 @@ impl Workspace {
         Self {
             tabs: Vec::new(),
             active_idx: 0,
+            split_active: false,
+            split_idx: 0,
+            focus_left: true,
         }
     }
 
@@ -106,19 +115,28 @@ impl Workspace {
     }
 
     /// Close the tab at the given index.
-    /// Adjusts active_idx if needed.
+    /// Adjusts active_idx and split_idx if needed.
     pub fn close_tab(&mut self, idx: usize) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
         if idx < self.tabs.len() {
             self.tabs.remove(idx);
-            // Adjust active_idx if we removed a tab before or at the active position
-            if !self.tabs.is_empty() {
-                if self.active_idx >= self.tabs.len() {
-                    self.active_idx = self.tabs.len() - 1;
-                } else if idx < self.active_idx {
-                    self.active_idx -= 1;
-                }
-            } else {
-                self.active_idx = 0;
+            // Adjust active_idx
+            if self.active_idx >= self.tabs.len() {
+                self.active_idx = self.tabs.len() - 1;
+            } else if self.active_idx > idx {
+                self.active_idx -= 1;
+            }
+            // Adjust split_idx
+            if self.split_idx >= self.tabs.len() {
+                self.split_idx = self.tabs.len() - 1;
+            } else if self.split_idx > idx {
+                self.split_idx -= 1;
+            }
+            // Disable split if only one tab left
+            if self.tabs.len() == 1 {
+                self.split_active = false;
             }
         }
     }
@@ -131,6 +149,52 @@ impl Workspace {
     /// Returns the names of all tabs (for rendering tab bar).
     pub fn tab_names(&self) -> Vec<&str> {
         self.tabs.iter().map(|t| t.name.as_str()).collect()
+    }
+
+    /// Toggle split view on/off.
+    /// Requires at least 2 tabs to enable.
+    pub fn toggle_split(&mut self) {
+        if self.tabs.len() > 1 {
+            self.split_active = !self.split_active;
+            if self.split_active {
+                // Default right pane to next tab after active
+                self.split_idx = (self.active_idx + 1) % self.tabs.len();
+            }
+        }
+    }
+
+    /// Toggle focus between left and right panes.
+    pub fn toggle_focus(&mut self) {
+        if self.split_active {
+            self.focus_left = !self.focus_left;
+        }
+    }
+
+    /// Get a reference to the focused tab.
+    pub fn focused_tab(&self) -> Option<&Tab> {
+        if self.split_active && !self.focus_left {
+            self.tabs.get(self.split_idx)
+        } else {
+            self.active_tab()
+        }
+    }
+
+    /// Get a mutable reference to the focused tab.
+    pub fn focused_tab_mut(&mut self) -> Option<&mut Tab> {
+        if self.split_active && !self.focus_left {
+            self.tabs.get_mut(self.split_idx)
+        } else {
+            self.active_tab_mut()
+        }
+    }
+
+    /// Get the index of the focused tab.
+    pub fn focused_idx(&self) -> usize {
+        if self.split_active && !self.focus_left {
+            self.split_idx
+        } else {
+            self.active_idx
+        }
     }
 }
 
