@@ -8,7 +8,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 - ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-01-14)
 - ✅ **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
-- 🚧 **v1.2 Advanced Viewing** — Phases 7-10 (in progress)
+- ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-15)
 
 ## Completed Milestones
 
@@ -33,7 +33,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
-### 🚧 v1.2 Advanced Viewing (In Progress)
+### ✅ v1.2 Advanced Viewing (SHIPPED 2026-01-15)
 
 **Milestone Goal:** Enhanced table interaction with column controls, data export, and multi-table workflows.
 
@@ -72,7 +72,7 @@ Plans:
 - [x] 09-02: Tab navigation and new tab creation
 - [x] 09-03: Split view for side-by-side comparison
 
-#### Phase 10: Scroll Indicators
+#### Phase 10: Scroll Indicators — COMPLETE 2026-01-15
 
 **Goal**: Visual arrow columns on table edges indicating horizontal scroll availability
 **Depends on**: Phase 9
@@ -80,7 +80,7 @@ Plans:
 **Plans**: 1
 
 Plans:
-- [ ] 10-01: Visual arrow columns on table edges
+- [x] 10-01: Visual arrow columns on table edges
 
 ## Progress
 
@@ -95,7 +95,7 @@ Plans:
 | 7. Column Controls | v1.2 | 4/4 | Complete | 2026-01-15 |
 | 8. Data Export | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 9. Multiple Tables | v1.2 | 3/3 | Complete | 2026-01-15 |
-| 10. Scroll Indicators | v1.2 | 0/1 | Planned | - |
+| 10. Scroll Indicators | v1.2 | 1/1 | Complete | 2026-01-15 |
 
 ## Domain Expertise
 
