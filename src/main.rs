@@ -64,6 +64,13 @@ enum ViewMode {
     PipeData,  // Viewing piped data (no back navigation)
 }
 
+/// Pending action to be executed after dropping mutable tab reference.
+/// Used to avoid borrow conflicts when creating new tabs.
+enum PendingAction {
+    None,
+    CreateTab { name: String, data: TableData },
+}
+
 /// Initialize the terminal for TUI rendering.
 /// Enables raw mode, enters alternate screen, and creates a Terminal instance.
 fn init_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
@@ -571,6 +578,9 @@ fn main() -> io::Result<()> {
         // Poll with 250ms timeout for responsive feel
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
+                // Pending action for deferred tab creation (to avoid borrow conflicts)
+                let mut pending_action = PendingAction::None;
+
                 // Get fresh mutable reference to active tab for event handling
                 let tab = workspace.active_tab_mut().unwrap();
 
@@ -617,15 +627,11 @@ fn main() -> io::Result<()> {
                                                             } else {
                                                                 current_table_name =
                                                                     Some(tbl_name.clone());
-                                                                // Update the active tab with new data
-                                                                tab.data = data;
-                                                                tab.column_config = ColumnConfig::new(tab.data.headers.len());
-                                                                tab.scroll_col_offset = 0;
-                                                                tab.selected_visible_col = 0;
-                                                                tab.table_state = TableState::default()
-                                                                    .with_selected(Some(0));
-                                                                tab.filter_text.clear();
-                                                                view_mode = ViewMode::TableData;
+                                                                // Queue tab creation (deferred to avoid borrow conflict)
+                                                                pending_action = PendingAction::CreateTab {
+                                                                    name: tbl_name.clone(),
+                                                                    data,
+                                                                };
                                                             }
                                                         }
                                                         Err(e) => {
@@ -882,9 +888,9 @@ fn main() -> io::Result<()> {
                             KeyCode::Enter => {
                                 if let Some(ref mut client) = db_client {
                                     // Execute query via database client
-                                    let query = input_buffer.trim();
-                                    if !query.is_empty() {
-                                        match db::execute_query(client, query) {
+                                    let query_str = input_buffer.trim().to_string();
+                                    if !query_str.is_empty() {
+                                        match db::execute_query(client, &query_str) {
                                             Ok(data) => {
                                                 if data.headers.is_empty() && data.rows.is_empty() {
                                                     status_message = Some(
@@ -892,14 +898,21 @@ fn main() -> io::Result<()> {
                                                     );
                                                     status_message_time = Some(Instant::now());
                                                 } else {
-                                                    // Update active tab with new data
-                                                    tab.data = data;
-                                                    tab.column_config = ColumnConfig::new(tab.data.headers.len());
-                                                    tab.scroll_col_offset = 0;
-                                                    tab.selected_visible_col = 0;
-                                                    tab.table_state = TableState::default()
-                                                        .with_selected(Some(0));
-                                                    tab.filter_text.clear(); // Clear filter when new data loaded
+                                                    // Generate tab name from query (truncate if long)
+                                                    let tab_name = {
+                                                        let q = query_str.trim();
+                                                        if q.len() > 20 {
+                                                            format!("{}...", &q[..17])
+                                                        } else {
+                                                            q.to_string()
+                                                        }
+                                                    };
+
+                                                    // Queue tab creation (deferred to avoid borrow conflict)
+                                                    pending_action = PendingAction::CreateTab {
+                                                        name: tab_name,
+                                                        data,
+                                                    };
                                                 }
                                             }
                                             Err(e) => {
@@ -1042,6 +1055,15 @@ fn main() -> io::Result<()> {
                             _ => {}
                         }
                     }
+                }
+
+                // Process pending action (tab borrow has been dropped)
+                if let PendingAction::CreateTab { name, data } = pending_action {
+                    let new_idx = workspace.add_tab(name, data);
+                    workspace.switch_to(new_idx);
+                    view_mode = ViewMode::TableData;
+                    status_message = Some(format!("Opened in tab {}", new_idx + 1));
+                    status_message_time = Some(Instant::now());
                 }
             }
         }
