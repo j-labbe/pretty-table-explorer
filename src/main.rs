@@ -368,9 +368,9 @@ fn main() -> io::Result<()> {
                 ViewMode::TableList => ("Tables", "Enter: select, /: filter, q: quit"),
                 ViewMode::TableData => {
                     let label = table_name.as_deref().unwrap_or("Query Result");
-                    (label, "Esc: back, /: filter, :: query, +/-: resize, H: hide, S: show all, q: quit")
+                    (label, "+/-/0: width, H/S: hide/show, </>: move, Esc: back, q: quit")
                 }
-                ViewMode::PipeData => ("Data", "/: filter, +/-: resize, H: hide, S: show all, q: quit"),
+                ViewMode::PipeData => ("Data", "+/-/0: width, H/S: hide/show, </>: move, q: quit"),
             };
 
             let title = format!(
