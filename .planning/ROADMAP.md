@@ -77,10 +77,10 @@ Plans:
 **Goal**: Visual arrow columns on table edges indicating horizontal scroll availability
 **Depends on**: Phase 9
 **Research**: Unlikely (TUI rendering patterns)
-**Plans**: TBD
+**Plans**: 1
 
 Plans:
-- [ ] 10-01: TBD (run /gsd:plan-phase 10 to break down)
+- [ ] 10-01: Visual arrow columns on table edges
 
 ## Progress
 
@@ -95,7 +95,7 @@ Plans:
 | 7. Column Controls | v1.2 | 4/4 | Complete | 2026-01-15 |
 | 8. Data Export | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 9. Multiple Tables | v1.2 | 3/3 | Complete | 2026-01-15 |
-| 10. Scroll Indicators | v1.2 | 0/? | Not started | - |
+| 10. Scroll Indicators | v1.2 | 0/1 | Planned | - |
 
 ## Domain Expertise
 
