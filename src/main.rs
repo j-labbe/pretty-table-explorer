@@ -295,13 +295,21 @@ fn main() -> io::Result<()> {
     loop {
         // Build tab bar string BEFORE getting mutable reference to tab
         // (only shown when multiple tabs exist)
+        // Format: "1:name 2:name [3:active] 4:name | " with numbers matching keyboard shortcuts
         let tab_count = workspace.tab_count();
         let tab_bar = if tab_count > 1 {
             let names: Vec<String> = workspace.tabs.iter().enumerate().map(|(i, t)| {
-                if i == workspace.active_idx {
-                    format!("[{}]", t.name)
+                // Truncate long tab names to prevent title overflow
+                let name = if t.name.len() > 15 {
+                    format!("{}...", &t.name[..12])
                 } else {
                     t.name.clone()
+                };
+                // Show index number (1-based) with each tab name
+                if i == workspace.active_idx {
+                    format!("[{}:{}]", i + 1, name)
+                } else {
+                    format!("{}:{}", i + 1, name)
                 }
             }).collect();
             format!("{} | ", names.join(" "))
@@ -487,8 +495,8 @@ fn main() -> io::Result<()> {
             let right_indicator = if has_right_overflow { " ▶" } else { "" };
 
             // Build context-appropriate title
-            // Add tab controls when multiple tabs exist
-            let tab_controls = if tab_count > 1 { "Tab: switch, W: close, " } else { "" };
+            // Add tab controls when multiple tabs exist (include 1-9 hint for direct selection)
+            let tab_controls = if tab_count > 1 { "1-9: tab, W: close, " } else { "" };
             let (context_label, controls): (&str, String) = match current_view {
                 ViewMode::TableList => ("Tables", format!("{}Enter: select, /: filter, q: quit", tab_controls)),
                 ViewMode::TableData => {
