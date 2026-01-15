@@ -358,9 +358,9 @@ fn main() -> io::Result<()> {
                 ViewMode::TableList => ("Tables", "Enter: select, /: filter, q: quit"),
                 ViewMode::TableData => {
                     let label = table_name.as_deref().unwrap_or("Query Result");
-                    (label, "Esc: back, /: filter, :: query, q: quit")
+                    (label, "Esc: back, /: filter, :: query, +/-: resize col, q: quit")
                 }
-                ViewMode::PipeData => ("Data", "/: filter, q: quit"),
+                ViewMode::PipeData => ("Data", "/: filter, +/-: resize col, q: quit"),
             };
 
             let title = format!(
@@ -567,6 +567,25 @@ fn main() -> io::Result<()> {
                                         (selected + 10).min(displayed_row_count.saturating_sub(1));
                                     table_state.select(Some(new_pos));
                                 }
+                            }
+
+                            // Column width adjustment (+ and - keys)
+                            KeyCode::Char('+') | KeyCode::Char('=') => {
+                                if let Some(col) = table_state.selected_column() {
+                                    column_config.adjust_width(col, 2);
+                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                }
+                            }
+                            KeyCode::Char('-') | KeyCode::Char('_') => {
+                                if let Some(col) = table_state.selected_column() {
+                                    column_config.adjust_width(col, -2);
+                                    widths = calculate_widths(&table_data, Some(&column_config));
+                                }
+                            }
+                            // Reset column widths to auto
+                            KeyCode::Char('0') => {
+                                column_config.reset();
+                                widths = calculate_widths(&table_data, Some(&column_config));
                             }
 
                             _ => {}
