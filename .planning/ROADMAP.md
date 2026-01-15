@@ -65,10 +65,12 @@ Plans:
 **Goal**: Named tabs/workspaces for multiple query results + split view
 **Depends on**: Phase 8
 **Research**: Unlikely (extending existing architecture)
-**Plans**: TBD
+**Plans**: 3
 
 Plans:
-- [ ] 09-01: TBD (run /gsd:plan-phase 9 to break down)
+- [ ] 09-01: Workspace module and tab bar rendering
+- [ ] 09-02: Tab navigation and new tab creation
+- [ ] 09-03: Split view for side-by-side comparison
 
 #### Phase 10: Scroll Indicators
 
@@ -92,7 +94,7 @@ Plans:
 | 6. Installation & Updates | v1.1 | 2/2 | Complete | 2026-01-14 |
 | 7. Column Controls | v1.2 | 4/4 | Complete | 2026-01-15 |
 | 8. Data Export | v1.2 | 1/1 | Complete | 2026-01-15 |
-| 9. Multiple Tables | v1.2 | 0/? | Not started | - |
+| 9. Multiple Tables | v1.2 | 0/3 | Not started | - |
 | 10. Scroll Indicators | v1.2 | 0/? | Not started | - |
 
 ## Domain Expertise
