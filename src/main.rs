@@ -247,9 +247,11 @@ fn render_table_pane(
     let width_with_right_reserved = width_minus_left.saturating_sub(2);
 
     // Determine which columns fit in the viewport starting from scroll_col_offset
+    // Track if the last column needs to be truncated (partial content for wide columns)
     let mut render_cols: Vec<usize> = Vec::new();
     let mut cumulative_width: u16 = 0;
     let mut last_render_idx = pane.scroll_col_offset;
+    let mut last_col_truncated_width: Option<u16> = None;
 
     for (vis_idx, &data_idx) in pane.visible_cols.iter().enumerate().skip(pane.scroll_col_offset) {
         let col_width = match pane.widths.get(data_idx) {
@@ -263,12 +265,30 @@ fn render_table_pane(
         } else {
             col_width + 1 // Subsequent columns need separator
         };
-        if cumulative_width + width_needed <= width_with_right_reserved || render_cols.is_empty() {
-            // Always include at least one column
+        if cumulative_width + width_needed <= width_with_right_reserved {
+            // Column fully fits
             render_cols.push(data_idx);
             cumulative_width += width_needed;
             last_render_idx = vis_idx;
+        } else if render_cols.is_empty() {
+            // First column is wider than viewport - show partial content
+            // Use all available width for this single column
+            render_cols.push(data_idx);
+            last_col_truncated_width = Some(width_with_right_reserved);
+            cumulative_width = width_with_right_reserved;
+            last_render_idx = vis_idx;
+            break;
         } else {
+            // Column doesn't fully fit, but there might be remaining space
+            // Calculate remaining space (accounting for separator)
+            let remaining = width_with_right_reserved.saturating_sub(cumulative_width + 1);
+            if remaining >= 3 {
+                // Show partial content if at least 3 chars available (meaningful preview)
+                render_cols.push(data_idx);
+                last_col_truncated_width = Some(remaining);
+                cumulative_width = width_with_right_reserved;
+                last_render_idx = vis_idx;
+            }
             break;
         }
     }
@@ -282,6 +302,7 @@ fn render_table_pane(
         render_cols.clear();
         cumulative_width = 0;
         last_render_idx = pane.scroll_col_offset;
+        last_col_truncated_width = None;
 
         for (vis_idx, &data_idx) in pane.visible_cols.iter().enumerate().skip(pane.scroll_col_offset) {
             let col_width = match pane.widths.get(data_idx) {
@@ -293,11 +314,26 @@ fn render_table_pane(
             } else {
                 col_width + 1
             };
-            if cumulative_width + width_needed <= width_minus_left || render_cols.is_empty() {
+            if cumulative_width + width_needed <= width_minus_left {
                 render_cols.push(data_idx);
                 cumulative_width += width_needed;
                 last_render_idx = vis_idx;
+            } else if render_cols.is_empty() {
+                // First column wider than viewport - show partial
+                render_cols.push(data_idx);
+                last_col_truncated_width = Some(width_minus_left);
+                cumulative_width = width_minus_left;
+                last_render_idx = vis_idx;
+                break;
             } else {
+                // Check for partial content opportunity
+                let remaining = width_minus_left.saturating_sub(cumulative_width + 1);
+                if remaining >= 3 {
+                    render_cols.push(data_idx);
+                    last_col_truncated_width = Some(remaining);
+                    cumulative_width = width_minus_left;
+                    last_render_idx = vis_idx;
+                }
                 break;
             }
         }
@@ -382,12 +418,24 @@ fn render_table_pane(
 
     // Build widths for columns in scroll window
     // Prepend/append indicator widths if needed
+    // If right overflow exists, use Fill(1) for the last data column to push indicator to edge
     let mut render_widths: Vec<Constraint> = Vec::new();
     if has_left_overflow {
         render_widths.push(Constraint::Length(1));
     }
-    for &i in &render_cols {
-        render_widths.push(pane.widths[i]);
+    let last_data_col_idx = render_cols.len().saturating_sub(1);
+    for (idx, &i) in render_cols.iter().enumerate() {
+        let is_last_data_col = idx == last_data_col_idx;
+        if is_last_data_col && has_right_overflow {
+            // Use Fill(1) for last data column when right indicator exists
+            // This makes the column expand to fill remaining space, pushing indicator to edge
+            render_widths.push(Constraint::Fill(1));
+        } else if is_last_data_col && last_col_truncated_width.is_some() {
+            // Use truncated width for partially displayed column
+            render_widths.push(Constraint::Length(last_col_truncated_width.unwrap()));
+        } else {
+            render_widths.push(pane.widths[i]);
+        }
     }
     if has_right_overflow {
         render_widths.push(Constraint::Length(1));
