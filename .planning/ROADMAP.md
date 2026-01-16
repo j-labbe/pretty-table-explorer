@@ -81,6 +81,7 @@ Plans:
 
 Plans:
 - [x] 10-01: Visual arrow columns on table edges
+- [x] 10-01-FIX: UAT bug fixes for indicator positioning (2026-01-16)
 
 ## Progress
 

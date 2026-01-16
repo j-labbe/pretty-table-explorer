@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 ## Current Position
 
 Phase: 10 of 10 (Scroll Indicators)
-Plan: 1/1 complete
-Status: Phase Complete - v1.2 Milestone Complete
-Last activity: 2026-01-15 — Completed 10-01-PLAN.md
+Plan: 1/1 complete + FIX
+Status: Phase Complete - v1.2 Milestone Complete (with UAT fixes)
+Last activity: 2026-01-16 — Completed 10-01-FIX.md (UAT bug fixes)
 
 Progress: ████████████████ 100% (v1.2 complete)
 
@@ -77,6 +77,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-15
-Stopped at: v1.2 milestone complete
+Last session: 2026-01-16
+Stopped at: Completed 10-01-FIX.md (UAT bug fixes for scroll indicators)
 Resume file: None
