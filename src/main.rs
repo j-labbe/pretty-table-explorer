@@ -314,15 +314,28 @@ fn render_table_pane(
     // Calculate relative column position for table_state
     // This is the position within the DATA columns (not including indicator columns)
     let data_col_position = pane.selected_visible_col.saturating_sub(pane.scroll_col_offset);
-    // Clamp to render_cols range
+    // Clamp to render_cols range (ensures we never select beyond data columns)
     let data_col_position = data_col_position.min(render_cols.len().saturating_sub(1));
+
     // Adjust for left indicator column if present
     // The actual column position in the rendered table needs to account for the indicator
+    // Layout of rendered cells: [left_ind?] [data_col_0] [data_col_1] ... [data_col_n] [right_ind?]
+    // If left indicator present, data columns start at index 1
+    // Selection should NEVER land on indicator columns (only on data columns)
     let render_col_position = if has_left_overflow {
-        data_col_position + 1 // Skip the left indicator column
+        data_col_position + 1 // Skip the left indicator column (index 0)
     } else {
         data_col_position
     };
+    // Final safety clamp: ensure we don't exceed the last data column index
+    // Total rendered columns = (1 if left) + render_cols.len() + (1 if right)
+    // Valid data column indices: (1 if left) to (1 if left) + render_cols.len() - 1
+    let max_data_col_position = if has_left_overflow {
+        render_cols.len() // Last data column at index render_cols.len() (0 is left indicator)
+    } else {
+        render_cols.len().saturating_sub(1) // Last data column at index render_cols.len() - 1
+    };
+    let render_col_position = render_col_position.min(max_data_col_position);
 
     // Build overflow indicators
     let left_indicator = if has_left_overflow { "◀" } else { "" };
