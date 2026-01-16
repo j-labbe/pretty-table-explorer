@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 ## Current Position
 
 Phase: 10 of 10 (Scroll Indicators)
-Plan: 1/1 complete + FIX + FIX2
+Plan: 1/1 complete + FIX + FIX2 + FIX3
 Status: Phase Complete - v1.2 Milestone Complete (with UAT fixes)
-Last activity: 2026-01-16 — Completed 10-01-FIX2.md (UAT-004 fix)
+Last activity: 2026-01-16 — Completed 10-01-FIX3.md (UAT-005 fix)
 
 Progress: ████████████████ 100% (v1.2 complete)
 
@@ -78,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-16
-Stopped at: Completed 10-01-FIX2.md (UAT-004 fix for indicator positioning)
+Stopped at: Completed 10-01-FIX3.md (UAT-005 fix for wide column navigation)
 Resume file: None
