@@ -229,15 +229,22 @@ fn render_table_pane(
     // Calculate available width for columns (subtract borders, highlight symbol, and indicators if present)
     // We need to reserve space for right indicator upfront since we don't know if we'll need it
     // until we calculate which columns fit - use a two-pass approach
+    //
+    // Layout: | >> | [left_ind] | col1 | col2 | ... | [right_ind] |
+    // - 2 chars for left/right borders (the | characters)
+    // - 3 chars for highlight symbol ">> "
+    // - 1 char for left indicator (if present) + 1 for its separator
+    // - 1 char for right indicator (if present) - no trailing separator needed
     let base_width = area.width.saturating_sub(2 + 3); // 2 for borders, 3 for ">> "
     let width_minus_left = if has_left_overflow {
-        base_width.saturating_sub(1) // Reserve 1 char for left indicator column
+        base_width.saturating_sub(2) // Reserve 1 char for left indicator + 1 for separator
     } else {
         base_width
     };
 
     // First pass: calculate with reserved right indicator space to determine if overflow exists
-    let width_with_right_reserved = width_minus_left.saturating_sub(1);
+    // Reserve 2 chars: 1 for separator before right indicator, 1 for indicator itself
+    let width_with_right_reserved = width_minus_left.saturating_sub(2);
 
     // Determine which columns fit in the viewport starting from scroll_col_offset
     let mut render_cols: Vec<usize> = Vec::new();
@@ -249,10 +256,17 @@ fn render_table_pane(
             Some(Constraint::Length(w)) => *w,
             _ => 10, // fallback
         };
-        if cumulative_width + col_width <= width_with_right_reserved || render_cols.is_empty() {
+        // Check if this column fits (including its trailing separator)
+        // Note: we use col_width + 1 for separator between columns
+        let width_needed = if render_cols.is_empty() {
+            col_width // First column doesn't need leading separator
+        } else {
+            col_width + 1 // Subsequent columns need separator
+        };
+        if cumulative_width + width_needed <= width_with_right_reserved || render_cols.is_empty() {
             // Always include at least one column
             render_cols.push(data_idx);
-            cumulative_width += col_width + 1; // +1 for column separator
+            cumulative_width += width_needed;
             last_render_idx = vis_idx;
         } else {
             break;
@@ -274,9 +288,14 @@ fn render_table_pane(
                 Some(Constraint::Length(w)) => *w,
                 _ => 10, // fallback
             };
-            if cumulative_width + col_width <= width_minus_left || render_cols.is_empty() {
+            let width_needed = if render_cols.is_empty() {
+                col_width
+            } else {
+                col_width + 1
+            };
+            if cumulative_width + width_needed <= width_minus_left || render_cols.is_empty() {
                 render_cols.push(data_idx);
-                cumulative_width += col_width + 1;
+                cumulative_width += width_needed;
                 last_render_idx = vis_idx;
             } else {
                 break;
