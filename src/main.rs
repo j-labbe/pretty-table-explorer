@@ -747,9 +747,12 @@ fn main() -> io::Result<()> {
                         tab.scroll_col_offset = tab.selected_visible_col;
                     }
                     // Scroll right if selected column is beyond last visible
-                    while tab.selected_visible_col > last_visible_col_idx.get() && tab.scroll_col_offset < visible_cols.len() - 1 {
-                        tab.scroll_col_offset += 1;
-                        last_visible_col_idx.set(tab.selected_visible_col);
+                    // Use direct assignment to scroll in one step (not incrementally)
+                    // This ensures immediate navigation even past wide columns
+                    if tab.selected_visible_col > last_visible_col_idx.get() {
+                        // Scroll so selected column is the first visible (leftmost)
+                        // This ensures we scroll enough in one step, even for wide columns
+                        tab.scroll_col_offset = tab.selected_visible_col.min(visible_cols.len() - 1);
                     }
                 }
             }
