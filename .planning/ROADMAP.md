@@ -8,12 +8,13 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 - ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-01-14)
 - ✅ **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
-- ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-15)
+- ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-16)
 
 ## Completed Milestones
 
 - [v1.0 MVP](milestones/v1.0-ROADMAP.md) (Phases 1-4) — SHIPPED 2026-01-14
 - [v1.1 Distribution](milestones/v1.1-ROADMAP.md) (Phases 5-6) — SHIPPED 2026-01-14
+- [v1.2 Advanced Viewing](milestones/v1.2-ROADMAP.md) (Phases 7-10) — SHIPPED 2026-01-16
 
 <details>
 <summary> v1.0 MVP (Phases 1-4) — SHIPPED 2026-01-14</summary>
@@ -33,57 +34,15 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
-### ✅ v1.2 Advanced Viewing (SHIPPED 2026-01-15)
+<details>
+<summary> v1.2 Advanced Viewing (Phases 7-10) — SHIPPED 2026-01-16</summary>
 
-**Milestone Goal:** Enhanced table interaction with column controls, data export, and multi-table workflows.
+- [x] Phase 7: Column Controls (4/4 plans) — completed 2026-01-15
+- [x] Phase 8: Data Export (1/1 plan) — completed 2026-01-15
+- [x] Phase 9: Multiple Tables (3/3 plans) — completed 2026-01-15
+- [x] Phase 10: Scroll Indicators (1/1 plan + 3 FIX) — completed 2026-01-16
 
-#### Phase 7: Column Controls — COMPLETE 2026-01-15
-
-**Goal**: Resize, hide, and reorder columns (view-only modifications)
-**Depends on**: Phase 6 (v1.1 complete)
-**Research**: Unlikely (internal TUI patterns)
-**Plans**: 4
-
-Plans:
-- [x] 07-01: Column state and width resizing (+/- keys)
-- [x] 07-02: Column hide/show (H/S keys)
-- [x] 07-03: Column reordering (</> keys)
-- [x] 07-04: Horizontal table scrolling (added during UAT)
-
-#### Phase 8: Data Export — COMPLETE 2026-01-15
-
-**Goal**: Export current table view to CSV and JSON formats
-**Depends on**: Phase 7
-**Research**: Unlikely (standard serialization patterns)
-**Plans**: 1
-
-Plans:
-- [x] 08-01: CSV/JSON export with format selection and column visibility
-
-#### Phase 9: Multiple Tables — COMPLETE 2026-01-15
-
-**Goal**: Named tabs/workspaces for multiple query results + split view
-**Depends on**: Phase 8
-**Research**: Unlikely (extending existing architecture)
-**Plans**: 3
-
-Plans:
-- [x] 09-01: Workspace module and tab bar rendering
-- [x] 09-02: Tab navigation and new tab creation
-- [x] 09-03: Split view for side-by-side comparison
-
-#### Phase 10: Scroll Indicators — COMPLETE 2026-01-15
-
-**Goal**: Visual arrow columns on table edges indicating horizontal scroll availability
-**Depends on**: Phase 9
-**Research**: Unlikely (TUI rendering patterns)
-**Plans**: 1
-
-Plans:
-- [x] 10-01: Visual arrow columns on table edges
-- [x] 10-01-FIX: UAT bug fixes for indicator positioning (2026-01-16)
-- [x] 10-01-FIX2: UAT-004 fix for right indicator edge position (2026-01-16)
-- [x] 10-01-FIX3: UAT-005 fix for wide column navigation scroll (2026-01-16)
+</details>
 
 ## Progress
 

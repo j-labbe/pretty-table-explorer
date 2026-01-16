@@ -6,9 +6,22 @@
 
 ## Open Issues
 
-None.
+None
 
 ## Resolved Issues
+
+### UAT-005: Wide column navigation causes incremental "inching" scroll behavior
+
+**Discovered:** 2026-01-16
+**Resolved:** 2026-01-16 - Fixed in 10-01-FIX3.md
+**Commit:** 01aa2d2
+**Phase/Plan:** 10-01
+**Severity:** Major
+**Feature:** Column navigation with wide/truncated columns
+**Description:** When navigating past a wide column (one that is partially displayed/truncated), the navigation behavior is sluggish. Instead of immediately selecting the next column, the table scrolls incrementally multiple times while keeping the wide column selected, "inching" past it before finally selecting the next column. This causes a noticeable visual delay and gives users the impression that column navigation is slow or unresponsive.
+**Expected:** Pressing right arrow on a wide column should immediately select the next column to the right, scrolling the table as needed in one step.
+**Actual:** Pressing right arrow triggers multiple incremental scrolls while the wide column remains selected, eventually selecting the next column after several key presses or a delay.
+**Resolution:** Replaced incremental while loop with direct assignment (`scroll_col_offset = selected_visible_col`) for immediate scroll behavior.
 
 ### UAT-004: Right indicator not fixed to viewport edge with wide columns
 

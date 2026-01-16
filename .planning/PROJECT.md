@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An interactive terminal-based table viewer for PostgreSQL that provides smooth scrolling and clean rendering of query results. Supports both piped psql output and direct database connections, with one-line installation and self-update capability.
+An interactive terminal-based table viewer for PostgreSQL with advanced viewing features. Provides smooth scrolling, column controls (resize, hide, reorder), multi-tab workspaces, split view comparison, and data export. Supports both piped psql output and direct database connections.
 
 ## Core Value
 
@@ -24,16 +24,22 @@ Clean table rendering with proper column alignment — no wrapping, no spacing i
 - ✓ One-line install script — v1.1
 - ✓ Self-update command — v1.1
 - ✓ Version flag (--version) — v1.1
+- ✓ Column width resizing (+/-) — v1.2
+- ✓ Column hide/show (H/S) — v1.2
+- ✓ Column reordering (</>) — v1.2
+- ✓ Export to CSV and JSON — v1.2
+- ✓ Multi-tab workspaces — v1.2
+- ✓ Split view for table comparison — v1.2
+- ✓ Horizontal scroll indicators (◀/▶) — v1.2
 
 ### Active
 
-- [ ] Interactive column resizing
+(None — considering next milestone scope)
 
 ### Out of Scope
 
-- Editing data (INSERT/UPDATE/DELETE) — read-only viewer for v1
+- Editing data (INSERT/UPDATE/DELETE) — read-only viewer
 - Multiple database connections — single connection at a time
-- Export to file (CSV/JSON) — not needed for viewing
 - Copy to clipboard — keep interaction model simple
 
 ## Background
@@ -61,14 +67,18 @@ Target environment is Ubuntu Linux running under WSL2.
 | ureq for HTTP | Sync API, smaller binary than reqwest | ✓ Good — self-update works without async runtime |
 | POSIX shell installer | Maximum portability across Linux/macOS | ✓ Good — works on bash, zsh, sh |
 | Native ARM runners | Simpler than cross-compilation for macOS | ✓ Good — reliable builds |
+| Viewport-based horizontal scroll | Render only visible columns at actual widths | ✓ Good — fixes ratatui compression issues |
+| PaneRenderData pattern | Pre-compute render state to avoid borrow conflicts | ✓ Good — clean split view implementation |
+| Tab-isolated state | All table state in Tab struct, not main scope | ✓ Good — clean multi-tab architecture |
+| Two-pass indicator width calc | Reserve space for right indicator, recalc if no overflow | ✓ Good — proper scroll indicator positioning |
 
 ## Context
 
-Shipped v1.1.1 with ~4,500 lines of Rust.
-Tech stack: Rust 2021 edition, ratatui v0.29, crossterm v0.28, postgres v0.19, clap v4, ureq v2, sha2 v0.10.
+Shipped v1.2 with ~2,800 lines of Rust.
+Tech stack: Rust 2021 edition, ratatui v0.29, crossterm v0.28, postgres v0.19, clap v4, ureq v2, sha2 v0.10, csv v1, serde v1, serde_json v1.
 Dual-mode operation: stdin pipe for psql output, --connect for direct PostgreSQL access.
-All core viewing features implemented: navigation, scrolling, query, filter.
+Advanced viewing: column controls (resize/hide/reorder), multi-tab workspaces with split view, CSV/JSON export, scroll indicators.
 Distribution: GitHub releases for 4 platforms, install script, self-update command.
 
 ---
-*Last updated: 2026-01-14 after v1.1 milestone*
+*Last updated: 2026-01-16 after v1.2 milestone*
