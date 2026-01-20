@@ -90,11 +90,6 @@ impl Workspace {
         self.tabs.len() - 1
     }
 
-    /// Get a reference to the active tab, if any.
-    pub fn active_tab(&self) -> Option<&Tab> {
-        self.tabs.get(self.active_idx)
-    }
-
     /// Get a mutable reference to the active tab, if any.
     pub fn active_tab_mut(&mut self) -> Option<&mut Tab> {
         self.tabs.get_mut(self.active_idx)
@@ -175,11 +170,6 @@ impl Workspace {
         self.tabs.len()
     }
 
-    /// Returns the names of all tabs (for rendering tab bar).
-    pub fn tab_names(&self) -> Vec<&str> {
-        self.tabs.iter().map(|t| t.name.as_str()).collect()
-    }
-
     /// Toggle split view on/off.
     /// Requires at least 2 tabs to enable.
     pub fn toggle_split(&mut self) {
@@ -196,15 +186,6 @@ impl Workspace {
     pub fn toggle_focus(&mut self) {
         if self.split_active {
             self.focus_left = !self.focus_left;
-        }
-    }
-
-    /// Get a reference to the focused tab.
-    pub fn focused_tab(&self) -> Option<&Tab> {
-        if self.split_active && !self.focus_left {
-            self.tabs.get(self.split_idx)
-        } else {
-            self.active_tab()
         }
     }
 
@@ -251,7 +232,7 @@ mod tests {
     fn test_workspace_new() {
         let ws = Workspace::new();
         assert_eq!(ws.tab_count(), 0);
-        assert!(ws.active_tab().is_none());
+        assert!(ws.tabs.is_empty());
     }
 
     #[test]
@@ -260,8 +241,8 @@ mod tests {
         let idx = ws.add_tab("Test".to_string(), sample_data(), ViewMode::TableData);
         assert_eq!(idx, 0);
         assert_eq!(ws.tab_count(), 1);
-        assert!(ws.active_tab().is_some());
-        assert_eq!(ws.active_tab().unwrap().name, "Test");
+        assert!(ws.tabs.get(ws.active_idx).is_some());
+        assert_eq!(ws.tabs[ws.active_idx].name, "Test");
     }
 
     #[test]
@@ -317,16 +298,6 @@ mod tests {
         ws.close_tab(0);
         assert_eq!(ws.tab_count(), 1);
         assert_eq!(ws.active_idx, 0);
-    }
-
-    #[test]
-    fn test_tab_names() {
-        let mut ws = Workspace::new();
-        ws.add_tab("Alpha".to_string(), sample_data(), ViewMode::TableData);
-        ws.add_tab("Beta".to_string(), sample_data(), ViewMode::TableData);
-
-        let names = ws.tab_names();
-        assert_eq!(names, vec!["Alpha", "Beta"]);
     }
 
     #[test]
