@@ -133,22 +133,39 @@ impl Workspace {
             return;
         }
         if idx < self.tabs.len() {
+            // Track if we're closing the right pane's tab while focused on it
+            let closing_focused_right = self.split_active && !self.focus_left && idx == self.split_idx;
+
             self.tabs.remove(idx);
+
             // Adjust active_idx
             if self.active_idx >= self.tabs.len() {
                 self.active_idx = self.tabs.len() - 1;
             } else if self.active_idx > idx {
                 self.active_idx -= 1;
             }
+
             // Adjust split_idx
             if self.split_idx >= self.tabs.len() {
                 self.split_idx = self.tabs.len() - 1;
             } else if self.split_idx > idx {
                 self.split_idx -= 1;
             }
+
             // Disable split if only one tab left
             if self.tabs.len() == 1 {
                 self.split_active = false;
+                self.focus_left = true;
+            } else if self.split_active {
+                // Ensure split_idx != active_idx when split is active
+                if self.split_idx == self.active_idx {
+                    // Pick a different tab for the right pane
+                    self.split_idx = (self.active_idx + 1) % self.tabs.len();
+                }
+                // If we closed the focused right pane's tab, move focus to left
+                if closing_focused_right {
+                    self.focus_left = true;
+                }
             }
         }
     }
