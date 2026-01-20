@@ -842,7 +842,7 @@ fn main() -> io::Result<()> {
 
             // Build context-appropriate controls hint
             let split_controls = if is_split {
-                "V: unsplit, Ctrl+W: switch pane, "
+                "Tab: switch pane, V: unsplit, "
             } else if tab_count > 1 {
                 "V: split, "
             } else {
