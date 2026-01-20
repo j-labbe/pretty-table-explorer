@@ -10,6 +10,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 - ✅ **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
 - ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-16)
 - ✅ **v1.2.1 Patch** — Phase 9 FIX plans (shipped 2026-01-20)
+- 🚧 **v1.3 Code Quality** — Phases 11-13 (in progress)
 
 ## Completed Milestones
 
@@ -58,6 +59,40 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
+### 🚧 v1.3 Code Quality (In Progress)
+
+**Milestone Goal:** Refactor monolithic main.rs into clean, layered architecture for better maintainability
+
+#### Phase 11: Core Types Extraction
+
+**Goal**: Extract models, state, and data structures (AppState, Tab, TableData) into dedicated modules
+**Depends on**: Previous milestone complete
+**Research**: Unlikely (internal patterns, refactoring)
+**Plans**: TBD
+
+Plans:
+- [ ] 11-01: TBD (run /gsd:plan-phase 11 to break down)
+
+#### Phase 12: UI Layer Extraction
+
+**Goal**: Extract views, rendering, and widgets into dedicated modules
+**Depends on**: Phase 11
+**Research**: Unlikely (internal patterns, refactoring)
+**Plans**: TBD
+
+Plans:
+- [ ] 12-01: TBD (run /gsd:plan-phase 12 to break down)
+
+#### Phase 13: Handlers & Cleanup
+
+**Goal**: Extract input handlers, commands, utils; remove dead code; fix clippy warnings; final polish
+**Depends on**: Phase 12
+**Research**: Unlikely (internal patterns, refactoring)
+**Plans**: TBD
+
+Plans:
+- [ ] 13-01: TBD (run /gsd:plan-phase 13 to break down)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -72,6 +107,9 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 | 8. Data Export | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 9. Multiple Tables | v1.2 | 3/3 | Complete | 2026-01-15 |
 | 10. Scroll Indicators | v1.2 | 1/1 | Complete | 2026-01-15 |
+| 11. Core Types Extraction | v1.3 | 0/? | Not started | - |
+| 12. UI Layer Extraction | v1.3 | 0/? | Not started | - |
+| 13. Handlers & Cleanup | v1.3 | 0/? | Not started | - |
 
 ## Domain Expertise
 

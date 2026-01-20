@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 ## Current Position
 
-Phase: 10 of 10 (all complete)
-Plan: All plans complete
-Status: v1.2.1 shipped
-Last activity: 2026-01-20 — Completed v1.2.1 milestone (split view bug fixes)
+Phase: 11 of 13 (Core Types Extraction)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-01-20 — Milestone v1.3 Code Quality created
 
-Progress: ████████████████ 100% (v1.2.1 shipped)
+Progress: ░░░░░░░░░░ 0%
 
 ## Milestone Status
 
@@ -30,6 +30,9 @@ Progress: ████████████████ 100% (v1.2.1 shipped)
 - ✅ v1.2.1 Patch — shipped 2026-01-20
   - Phase 9 FIX plans complete (6 FIX plans)
   - See: .planning/milestones/v1.2.1-ROADMAP.md
+- 🚧 v1.3 Code Quality — in progress
+  - Phases 11-13 (3 phases)
+  - Focus: Refactor main.rs into layered architecture
 
 ## Performance Metrics
 
@@ -77,9 +80,10 @@ None.
 - Milestone v1.1 created: Distribution, 2 phases (Phase 5-6)
 - Milestone v1.2 created: Advanced Viewing, 4 phases (Phase 7-10)
 - All milestones archived
+- Milestone v1.3 created: Code Quality, 3 phases (Phase 11-13)
 
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed v1.2.1 milestone
+Stopped at: Milestone v1.3 initialization
 Resume file: None
