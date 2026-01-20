@@ -1547,7 +1547,12 @@ fn main() -> io::Result<()> {
                 // Process pending action (tab borrow has been dropped)
                 if let PendingAction::CreateTab { name, data, view_mode } = pending_action {
                     let new_idx = workspace.add_tab(name, data, view_mode);
-                    workspace.switch_to(new_idx);
+                    // In split view with focus on right pane, open in right pane
+                    if workspace.split_active && !workspace.focus_left {
+                        workspace.split_idx = new_idx;
+                    } else {
+                        workspace.switch_to(new_idx);
+                    }
                     status_message = Some(format!("Opened in tab {}", new_idx + 1));
                     status_message_time = Some(Instant::now());
                 }
