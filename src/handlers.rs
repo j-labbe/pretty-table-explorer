@@ -95,8 +95,7 @@ pub fn handle_normal_mode(
                         };
                         if let Some(row) = display_rows.get(selected) {
                             if let Some(tbl_name) = row.first() {
-                                let query =
-                                    format!("SELECT * FROM \"{}\" LIMIT 1000", tbl_name);
+                                let query = format!("SELECT * FROM \"{}\" LIMIT 1000", tbl_name);
                                 match db::execute_query(client, &query) {
                                     Ok(data) => {
                                         if data.headers.is_empty() && data.rows.is_empty() {
@@ -415,7 +414,9 @@ pub fn handle_query_input(
                             if data.headers.is_empty() && data.rows.is_empty() {
                                 input_buffer.clear();
                                 return (
-                                    KeyAction::StatusMessage("Query returned no results".to_string()),
+                                    KeyAction::StatusMessage(
+                                        "Query returned no results".to_string(),
+                                    ),
                                     true,
                                 );
                             } else {

@@ -3,15 +3,15 @@
 //! Contains functions for calculating column widths, building render data,
 //! and rendering table panes with scroll indicators.
 
-use std::cell::Cell as StdCell;
-use ratatui::{
-    prelude::*,
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
-};
 use crate::column::ColumnConfig;
 use crate::parser::TableData;
 use crate::state::{AppMode, PaneRenderData};
 use crate::workspace::{Tab, ViewMode, Workspace};
+use ratatui::{
+    prelude::*,
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
+};
+use std::cell::Cell as StdCell;
 
 /// Calculate auto-sized column widths from table data (raw values, no overrides).
 /// Returns width for each column sized to fit the maximum content width + 1 for padding.
@@ -142,7 +142,12 @@ pub fn render_table_pane(
     let mut last_render_idx = pane.scroll_col_offset;
     let mut last_col_truncated_width: Option<u16> = None;
 
-    for (vis_idx, &data_idx) in pane.visible_cols.iter().enumerate().skip(pane.scroll_col_offset) {
+    for (vis_idx, &data_idx) in pane
+        .visible_cols
+        .iter()
+        .enumerate()
+        .skip(pane.scroll_col_offset)
+    {
         let col_width = match pane.widths.get(data_idx) {
             Some(Constraint::Length(w)) => *w,
             _ => 10, // fallback
@@ -191,7 +196,12 @@ pub fn render_table_pane(
         last_render_idx = pane.scroll_col_offset;
         last_col_truncated_width = None;
 
-        for (vis_idx, &data_idx) in pane.visible_cols.iter().enumerate().skip(pane.scroll_col_offset) {
+        for (vis_idx, &data_idx) in pane
+            .visible_cols
+            .iter()
+            .enumerate()
+            .skip(pane.scroll_col_offset)
+        {
             let col_width = match pane.widths.get(data_idx) {
                 Some(Constraint::Length(w)) => *w,
                 _ => 10, // fallback
@@ -234,7 +244,9 @@ pub fn render_table_pane(
 
     // Calculate relative column position for table_state
     // This is the position within the DATA columns (not including indicator columns)
-    let data_col_position = pane.selected_visible_col.saturating_sub(pane.scroll_col_offset);
+    let data_col_position = pane
+        .selected_visible_col
+        .saturating_sub(pane.scroll_col_offset);
     // Clamp to render_cols range (ensures we never select beyond data columns)
     let data_col_position = data_col_position.min(render_cols.len().saturating_sub(1));
 
@@ -277,7 +289,7 @@ pub fn render_table_pane(
     for &i in &render_cols {
         header_cells.push(
             Cell::from(pane.headers[i].as_str())
-                .style(Style::default().add_modifier(Modifier::BOLD))
+                .style(Style::default().add_modifier(Modifier::BOLD)),
         );
     }
     if has_right_overflow {
@@ -287,19 +299,23 @@ pub fn render_table_pane(
 
     // Create data rows from filtered set (only columns in scroll window)
     // Prepend/append indicator cells if needed
-    let data_rows: Vec<Row> = pane.display_rows.iter().map(|row| {
-        let mut cells: Vec<Cell> = Vec::new();
-        if has_left_overflow {
-            cells.push(Cell::from("◀").style(indicator_style));
-        }
-        for &i in &render_cols {
-            cells.push(Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or("")));
-        }
-        if has_right_overflow {
-            cells.push(Cell::from("▶").style(indicator_style));
-        }
-        Row::new(cells)
-    }).collect();
+    let data_rows: Vec<Row> = pane
+        .display_rows
+        .iter()
+        .map(|row| {
+            let mut cells: Vec<Cell> = Vec::new();
+            if has_left_overflow {
+                cells.push(Cell::from("◀").style(indicator_style));
+            }
+            for &i in &render_cols {
+                cells.push(Cell::from(row.get(i).map(|s| s.as_str()).unwrap_or("")));
+            }
+            if has_right_overflow {
+                cells.push(Cell::from("▶").style(indicator_style));
+            }
+            Row::new(cells)
+        })
+        .collect();
 
     // Build widths for columns in scroll window
     // Prepend/append indicator widths if needed
@@ -360,7 +376,8 @@ pub fn build_pane_title(
     is_focused: bool,
 ) -> String {
     // Build position info
-    let row_info = pane.selected_row
+    let row_info = pane
+        .selected_row
         .map(|r| {
             if pane.filter_text.is_empty() {
                 format!("Row {}/{}", r + 1, pane.total_rows)
@@ -381,7 +398,12 @@ pub fn build_pane_title(
         String::new()
     };
     let col_info = if !pane.visible_cols.is_empty() {
-        format!(" C{}/{}{}", pane.selected_visible_col + 1, pane.visible_count, hidden_info)
+        format!(
+            " C{}/{}{}",
+            pane.selected_visible_col + 1,
+            pane.visible_count,
+            hidden_info
+        )
     } else {
         String::new()
     };
@@ -400,7 +422,10 @@ pub fn build_pane_title(
 
     let focus_indicator = if is_focused { "*" } else { "" };
 
-    format!("{}{} {}{}", focus_indicator, pane.name, position, filter_info)
+    format!(
+        "{}{} {}{}",
+        focus_indicator, pane.name, position, filter_info
+    )
 }
 
 /// Build tab bar string for multi-tab display.
@@ -409,22 +434,27 @@ pub fn build_tab_bar(workspace: &Workspace) -> String {
     let tab_count = workspace.tab_count();
     let is_split = workspace.split_active && tab_count > 1;
     if tab_count > 1 {
-        let names: Vec<String> = workspace.tabs.iter().enumerate().map(|(i, t)| {
-            // Truncate long tab names to prevent title overflow
-            let name = if t.name.len() > 15 {
-                format!("{}...", &t.name[..12])
-            } else {
-                t.name.clone()
-            };
-            // Mark both active and split tabs in split mode
-            if is_split && i == workspace.split_idx && i != workspace.active_idx {
-                format!("<{}:{}>", i + 1, name)
-            } else if i == workspace.active_idx {
-                format!("[{}:{}]", i + 1, name)
-            } else {
-                format!("{}:{}", i + 1, name)
-            }
-        }).collect();
+        let names: Vec<String> = workspace
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                // Truncate long tab names to prevent title overflow
+                let name = if t.name.len() > 15 {
+                    format!("{}...", &t.name[..12])
+                } else {
+                    t.name.clone()
+                };
+                // Mark both active and split tabs in split mode
+                if is_split && i == workspace.split_idx && i != workspace.active_idx {
+                    format!("<{}:{}>", i + 1, name)
+                } else if i == workspace.active_idx {
+                    format!("[{}:{}]", i + 1, name)
+                } else {
+                    format!("{}:{}", i + 1, name)
+                }
+            })
+            .collect();
         format!("{} | ", names.join(" "))
     } else {
         String::new()
@@ -432,11 +462,7 @@ pub fn build_tab_bar(workspace: &Workspace) -> String {
 }
 
 /// Build context-appropriate controls hint string.
-pub fn build_controls_hint(
-    view_mode: ViewMode,
-    is_split: bool,
-    tab_count: usize,
-) -> String {
+pub fn build_controls_hint(view_mode: ViewMode, is_split: bool, tab_count: usize) -> String {
     let split_controls = if is_split {
         "Tab: switch pane, V: unsplit, "
     } else if tab_count > 1 {
@@ -444,12 +470,25 @@ pub fn build_controls_hint(
     } else {
         ""
     };
-    let tab_controls = if tab_count > 1 { "1-9: tab, W: close, " } else { "" };
+    let tab_controls = if tab_count > 1 {
+        "1-9: tab, W: close, "
+    } else {
+        ""
+    };
 
     match view_mode {
-        ViewMode::TableList => format!("{}{}Enter: select, /: filter, q: quit", split_controls, tab_controls),
-        ViewMode::TableData => format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit", split_controls, tab_controls),
-        ViewMode::PipeData => format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit", split_controls, tab_controls),
+        ViewMode::TableList => format!(
+            "{}{}Enter: select, /: filter, q: quit",
+            split_controls, tab_controls
+        ),
+        ViewMode::TableData => format!(
+            "{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit",
+            split_controls, tab_controls
+        ),
+        ViewMode::PipeData => format!(
+            "{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit",
+            split_controls, tab_controls
+        ),
     }
 }
 

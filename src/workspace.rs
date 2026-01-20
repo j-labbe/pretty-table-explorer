@@ -129,7 +129,8 @@ impl Workspace {
         }
         if idx < self.tabs.len() {
             // Track if we're closing the right pane's tab while focused on it
-            let closing_focused_right = self.split_active && !self.focus_left && idx == self.split_idx;
+            let closing_focused_right =
+                self.split_active && !self.focus_left && idx == self.split_idx;
 
             self.tabs.remove(idx);
 

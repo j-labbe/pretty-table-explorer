@@ -22,7 +22,11 @@ pub enum AppMode {
 /// Used to avoid borrow conflicts when creating new tabs.
 pub enum PendingAction {
     None,
-    CreateTab { name: String, data: TableData, view_mode: ViewMode },
+    CreateTab {
+        name: String,
+        data: TableData,
+        view_mode: ViewMode,
+    },
 }
 
 /// Data needed to render a single table pane.

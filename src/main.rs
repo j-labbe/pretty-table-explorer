@@ -13,11 +13,14 @@ use std::io::{self, Read};
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
-use handlers::{handle_normal_mode, handle_query_input, handle_search_input, handle_export_format, handle_export_filename, KeyAction, WorkspaceOp};
+use handlers::{
+    handle_export_filename, handle_export_format, handle_normal_mode, handle_query_input,
+    handle_search_input, KeyAction, WorkspaceOp,
+};
 use parser::TableData;
 use render::{
-    build_pane_render_data, build_pane_title, render_table_pane,
-    build_tab_bar, build_controls_hint, render_input_bar, render_format_prompt,
+    build_controls_hint, build_pane_render_data, build_pane_title, build_tab_bar,
+    render_format_prompt, render_input_bar, render_table_pane,
 };
 use state::{AppMode, PendingAction};
 use workspace::{ViewMode, Workspace};
@@ -196,7 +199,9 @@ fn main() -> io::Result<()> {
     let mut workspace = Workspace::new();
     let tab_name = match initial_view_mode {
         ViewMode::TableList => "Tables".to_string(),
-        ViewMode::TableData => current_table_name.clone().unwrap_or_else(|| "Query".to_string()),
+        ViewMode::TableData => current_table_name
+            .clone()
+            .unwrap_or_else(|| "Query".to_string()),
         ViewMode::PipeData => "Data".to_string(),
     };
     workspace.add_tab(tab_name, table_data, initial_view_mode);
@@ -252,8 +257,10 @@ fn main() -> io::Result<()> {
                         tab.scroll_col_offset = tab.selected_visible_col;
                     }
                     // Scroll right if selected column is beyond last visible (only if this is focused pane)
-                    if workspace.focus_left && tab.selected_visible_col > last_visible_col_idx.get() {
-                        tab.scroll_col_offset = tab.selected_visible_col.min(visible_cols.len() - 1);
+                    if workspace.focus_left && tab.selected_visible_col > last_visible_col_idx.get()
+                    {
+                        tab.scroll_col_offset =
+                            tab.selected_visible_col.min(visible_cols.len() - 1);
                     }
                 }
             }
@@ -271,8 +278,11 @@ fn main() -> io::Result<()> {
                         tab.scroll_col_offset = tab.selected_visible_col;
                     }
                     // Scroll right if selected column is beyond last visible (only if this is focused pane)
-                    if !workspace.focus_left && tab.selected_visible_col > last_visible_col_idx.get() {
-                        tab.scroll_col_offset = tab.selected_visible_col.min(visible_cols.len() - 1);
+                    if !workspace.focus_left
+                        && tab.selected_visible_col > last_visible_col_idx.get()
+                    {
+                        tab.scroll_col_offset =
+                            tab.selected_visible_col.min(visible_cols.len() - 1);
                     }
                 }
             }
@@ -296,16 +306,23 @@ fn main() -> io::Result<()> {
                     if tab.selected_visible_col > last_visible_col_idx.get() {
                         // Scroll so selected column is the first visible (leftmost)
                         // This ensures we scroll enough in one step, even for wide columns
-                        tab.scroll_col_offset = tab.selected_visible_col.min(visible_cols.len() - 1);
+                        tab.scroll_col_offset =
+                            tab.selected_visible_col.min(visible_cols.len() - 1);
                     }
                 }
             }
         }
 
         // Build render data for panes
-        let left_pane_data = workspace.tabs.get(workspace.active_idx).map(build_pane_render_data);
+        let left_pane_data = workspace
+            .tabs
+            .get(workspace.active_idx)
+            .map(build_pane_render_data);
         let right_pane_data = if is_split {
-            workspace.tabs.get(workspace.split_idx).map(build_pane_render_data)
+            workspace
+                .tabs
+                .get(workspace.split_idx)
+                .map(build_pane_render_data)
         } else {
             None
         };
@@ -316,7 +333,9 @@ fn main() -> io::Result<()> {
         } else {
             left_pane_data.as_ref()
         };
-        displayed_row_count = focused_pane_data.map(|p| p.displayed_row_count).unwrap_or(0);
+        displayed_row_count = focused_pane_data
+            .map(|p| p.displayed_row_count)
+            .unwrap_or(0);
 
         // Capture state needed for rendering (to avoid borrow issues)
         let mode = current_mode;
@@ -324,11 +343,15 @@ fn main() -> io::Result<()> {
         let status = status_message.clone();
 
         // Capture view modes for closure (per-tab view modes)
-        let left_view_mode = workspace.tabs.get(workspace.active_idx)
+        let left_view_mode = workspace
+            .tabs
+            .get(workspace.active_idx)
             .map(|t| t.view_mode)
             .unwrap_or(ViewMode::PipeData);
         let right_view_mode = if is_split {
-            workspace.tabs.get(workspace.split_idx)
+            workspace
+                .tabs
+                .get(workspace.split_idx)
                 .map(|t| t.view_mode)
                 .unwrap_or(ViewMode::PipeData)
         } else {
@@ -346,11 +369,15 @@ fn main() -> io::Result<()> {
         let focus_left = workspace.focus_left;
 
         // Clone table states for mutable use in render
-        let mut left_table_state = workspace.tabs.get(workspace.active_idx)
+        let mut left_table_state = workspace
+            .tabs
+            .get(workspace.active_idx)
             .map(|t| t.table_state.clone())
             .unwrap_or_default();
         let mut right_table_state = if is_split {
-            workspace.tabs.get(workspace.split_idx)
+            workspace
+                .tabs
+                .get(workspace.split_idx)
                 .map(|t| t.table_state.clone())
                 .unwrap_or_default()
         } else {
@@ -388,9 +415,9 @@ fn main() -> io::Result<()> {
                 let split_layout = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([
-                        Constraint::Length(1),  // Tab bar
-                        Constraint::Min(3),     // Panes
-                        Constraint::Length(1),  // Controls
+                        Constraint::Length(1), // Tab bar
+                        Constraint::Min(3),    // Panes
+                        Constraint::Length(1), // Controls
                     ])
                     .split(table_area);
 
@@ -399,8 +426,8 @@ fn main() -> io::Result<()> {
                 let controls_area = split_layout[2];
 
                 // Render tab bar at top
-                let tab_bar_widget = Paragraph::new(tab_bar.clone())
-                    .style(Style::default().fg(Color::Cyan));
+                let tab_bar_widget =
+                    Paragraph::new(tab_bar.clone()).style(Style::default().fg(Color::Cyan));
                 frame.render_widget(tab_bar_widget, tab_bar_area);
 
                 // Split panes horizontally
@@ -411,12 +438,8 @@ fn main() -> io::Result<()> {
 
                 // Render left pane (active tab)
                 if let Some(ref pane_data) = left_pane_data {
-                    let pane_title = build_pane_title(
-                        pane_data,
-                        &table_name,
-                        left_view_mode,
-                        focus_left,
-                    );
+                    let pane_title =
+                        build_pane_title(pane_data, &table_name, left_view_mode, focus_left);
                     render_table_pane(
                         frame,
                         pane_chunks[0],
@@ -430,12 +453,8 @@ fn main() -> io::Result<()> {
 
                 // Render right pane (split tab)
                 if let Some(ref pane_data) = right_pane_data {
-                    let pane_title = build_pane_title(
-                        pane_data,
-                        &table_name,
-                        right_view_mode,
-                        !focus_left,
-                    );
+                    let pane_title =
+                        build_pane_title(pane_data, &table_name, right_view_mode, !focus_left);
                     render_table_pane(
                         frame,
                         pane_chunks[1],
@@ -456,7 +475,8 @@ fn main() -> io::Result<()> {
                 // Single pane mode
                 if let Some(ref pane_data) = left_pane_data {
                     // Build full title with tab bar, position info, filter, status, and controls
-                    let row_info = pane_data.selected_row
+                    let row_info = pane_data
+                        .selected_row
                         .map(|r| {
                             if pane_data.filter_text.is_empty() {
                                 format!("Row {}/{}", r + 1, pane_data.total_rows)
@@ -477,7 +497,12 @@ fn main() -> io::Result<()> {
                         String::new()
                     };
                     let col_info = if !pane_data.visible_cols.is_empty() {
-                        format!(" Col {}/{}{}", pane_data.selected_visible_col + 1, pane_data.visible_count, hidden_info)
+                        format!(
+                            " Col {}/{}{}",
+                            pane_data.selected_visible_col + 1,
+                            pane_data.visible_count,
+                            hidden_info
+                        )
                     } else {
                         String::new()
                     };
@@ -583,8 +608,16 @@ fn main() -> io::Result<()> {
                                     status_message = Some(msg);
                                     status_message_time = Some(Instant::now());
                                 }
-                                KeyAction::CreateTab { name, data, view_mode } => {
-                                    pending_action = PendingAction::CreateTab { name, data, view_mode };
+                                KeyAction::CreateTab {
+                                    name,
+                                    data,
+                                    view_mode,
+                                } => {
+                                    pending_action = PendingAction::CreateTab {
+                                        name,
+                                        data,
+                                        view_mode,
+                                    };
                                 }
                                 KeyAction::ModeChange(mode) => {
                                     current_mode = mode;
@@ -598,11 +631,8 @@ fn main() -> io::Result<()> {
                         }
 
                         AppMode::QueryInput => {
-                            let (action, return_to_normal) = handle_query_input(
-                                &key,
-                                &mut input_buffer,
-                                &mut db_client,
-                            );
+                            let (action, return_to_normal) =
+                                handle_query_input(&key, &mut input_buffer, &mut db_client);
                             if return_to_normal {
                                 current_mode = AppMode::Normal;
                             }
@@ -611,8 +641,16 @@ fn main() -> io::Result<()> {
                                     status_message = Some(msg);
                                     status_message_time = Some(Instant::now());
                                 }
-                                KeyAction::CreateTab { name, data, view_mode } => {
-                                    pending_action = PendingAction::CreateTab { name, data, view_mode };
+                                KeyAction::CreateTab {
+                                    name,
+                                    data,
+                                    view_mode,
+                                } => {
+                                    pending_action = PendingAction::CreateTab {
+                                        name,
+                                        data,
+                                        view_mode,
+                                    };
                                 }
                                 _ => {}
                             }
@@ -625,22 +663,16 @@ fn main() -> io::Result<()> {
                         }
 
                         AppMode::ExportFormat => {
-                            if let Some(new_mode) = handle_export_format(
-                                &key,
-                                &mut export_format,
-                                &mut input_buffer,
-                            ) {
+                            if let Some(new_mode) =
+                                handle_export_format(&key, &mut export_format, &mut input_buffer)
+                            {
                                 current_mode = new_mode;
                             }
                         }
 
                         AppMode::ExportFilename => {
-                            let (msg, done) = handle_export_filename(
-                                &key,
-                                &mut input_buffer,
-                                export_format,
-                                tab,
-                            );
+                            let (msg, done) =
+                                handle_export_filename(&key, &mut input_buffer, export_format, tab);
                             if let Some(m) = msg {
                                 status_message = Some(m);
                                 status_message_time = Some(Instant::now());
@@ -669,7 +701,12 @@ fn main() -> io::Result<()> {
                 }
 
                 // Process pending action (tab borrow has been dropped)
-                if let PendingAction::CreateTab { name, data, view_mode } = pending_action {
+                if let PendingAction::CreateTab {
+                    name,
+                    data,
+                    view_mode,
+                } = pending_action
+                {
                     let new_idx = workspace.add_tab(name, data, view_mode);
                     // In split view with focus on right pane, open in right pane
                     if workspace.split_active && !workspace.focus_left {

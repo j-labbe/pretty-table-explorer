@@ -127,7 +127,7 @@ mod tests {
     fn test_adjust_width_from_none() {
         let mut config = ColumnConfig::new(2);
         config.adjust_width(0, 5, 20); // auto_width=20
-        // Starting from 20, +5 = 25
+                                       // Starting from 20, +5 = 25
         assert_eq!(config.get_width(0), Some(25));
         assert_eq!(config.get_width(1), None);
     }
@@ -136,7 +136,7 @@ mod tests {
     fn test_adjust_width_min_bound() {
         let mut config = ColumnConfig::new(1);
         config.adjust_width(0, -20, 15); // auto_width=15
-        // Starting from 15, -20 should clamp to 3
+                                         // Starting from 15, -20 should clamp to 3
         assert_eq!(config.get_width(0), Some(3));
     }
 
@@ -144,7 +144,7 @@ mod tests {
     fn test_adjust_width_max_bound() {
         let mut config = ColumnConfig::new(1);
         config.adjust_width(0, 200, 10); // auto_width=10
-        // Starting from 10, +200 should clamp to 100
+                                         // Starting from 10, +200 should clamp to 100
         assert_eq!(config.get_width(0), Some(100));
     }
 
@@ -154,7 +154,7 @@ mod tests {
         // When auto_width exceeds max (100), we start from 100 not auto_width
         // This prevents jumping from e.g., 150 to 100 on first minus
         config.adjust_width(0, -2, 150); // auto_width=150, but capped to 100
-        // Starting from 100 (capped), -2 = 98
+                                         // Starting from 100 (capped), -2 = 98
         assert_eq!(config.get_width(0), Some(98));
     }
 

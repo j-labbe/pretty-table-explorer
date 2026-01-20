@@ -78,8 +78,7 @@ fn export_json(data: &TableData, visible_cols: &[usize]) -> Result<String, Strin
         rows_json.push(row_obj);
     }
 
-    serde_json::to_string_pretty(&rows_json)
-        .map_err(|e| format!("Failed to serialize JSON: {}", e))
+    serde_json::to_string_pretty(&rows_json).map_err(|e| format!("Failed to serialize JSON: {}", e))
 }
 
 /// Save content to a file
