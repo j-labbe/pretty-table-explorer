@@ -708,6 +708,10 @@ fn main() -> io::Result<()> {
                     if tab.selected_visible_col < tab.scroll_col_offset {
                         tab.scroll_col_offset = tab.selected_visible_col;
                     }
+                    // Scroll right if selected column is beyond last visible (only if this is focused pane)
+                    if workspace.focus_left && tab.selected_visible_col > last_visible_col_idx.get() {
+                        tab.scroll_col_offset = tab.selected_visible_col.min(visible_cols.len() - 1);
+                    }
                 }
             }
             // Handle right pane (split tab)
@@ -722,6 +726,10 @@ fn main() -> io::Result<()> {
                     }
                     if tab.selected_visible_col < tab.scroll_col_offset {
                         tab.scroll_col_offset = tab.selected_visible_col;
+                    }
+                    // Scroll right if selected column is beyond last visible (only if this is focused pane)
+                    if !workspace.focus_left && tab.selected_visible_col > last_visible_col_idx.get() {
+                        tab.scroll_col_offset = tab.selected_visible_col.min(visible_cols.len() - 1);
                     }
                 }
             }
