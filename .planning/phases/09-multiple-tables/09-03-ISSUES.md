@@ -1,7 +1,7 @@
 # UAT Issues: Phase 9 Plan 3
 
-**Tested:** 2026-01-20 (re-test after 09-03-FIX2)
-**Source:** .planning/phases/09-multiple-tables/09-03-FIX2-SUMMARY.md
+**Tested:** 2026-01-20 (re-test after 09-03-FIX3)
+**Source:** .planning/phases/09-multiple-tables/09-03-FIX3-SUMMARY.md
 **Tester:** User via /gsd:verify-work
 
 ## Open Issues
@@ -9,6 +9,14 @@
 None.
 
 ## Resolved Issues
+
+### UAT-007: Enter key opens table in wrong pane in split view
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX4
+**Commit:** b32dde8
+**Description:** Enter key now opens tables in the focused pane (left or right).
+**Verification:** Pending action processing now checks focus_left before deciding which pane index to update.
 
 ### UAT-006: Tab bar and controls hint missing in split view
 
