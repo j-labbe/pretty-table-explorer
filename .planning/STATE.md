@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-16)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** Planning next milestone (v1.2 complete)
+**Current focus:** Post-v1.2 bug fixes
 
 ## Current Position
 
-Phase: All phases complete (10/10)
-Plan: N/A — milestone complete
-Status: v1.2 Milestone Shipped
-Last activity: 2026-01-16 — v1.2 milestone archived
+Phase: 9 of 10 (Multiple Tables - FIX)
+Plan: 09-03-FIX complete
+Status: UAT issues fixed
+Last activity: 2026-01-20 — Completed 09-03-FIX (per-tab view mode)
 
-Progress: ████████████████ 100% (v1.2 shipped)
+Progress: ████████████████ 100% (v1.2 + fix)
 
 ## Milestone Status
 
@@ -25,15 +25,15 @@ Progress: ████████████████ 100% (v1.2 shipped)
   - Phases 5-6 complete (4 plans)
   - See: .planning/milestones/v1.1-ROADMAP.md
 - ✅ v1.2 Advanced Viewing — shipped 2026-01-16
-  - Phases 7-10 complete (9 plans + 4 FIX plans)
+  - Phases 7-10 complete (9 plans + 5 FIX plans)
   - See: .planning/milestones/v1.2-ROADMAP.md
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21 + 4 FIX
-- Average duration: ~4.7 min
-- Total execution time: ~102 min
+- Total plans completed: 21 + 5 FIX
+- Average duration: ~4.6 min
+- Total execution time: ~106 min
 
 **By Phase:**
 
@@ -47,7 +47,7 @@ Progress: ████████████████ 100% (v1.2 shipped)
 | 6. Installation & Updates | 2 | 9 min | 4.5 min |
 | 7. Column Controls | 4 | 16 min | 4 min |
 | 8. Data Export | 1 | 5 min | 5 min |
-| 9. Multiple Tables | 3 | 19 min | 6.3 min |
+| 9. Multiple Tables | 3+1 FIX | 23 min | 5.8 min |
 | 10. Scroll Indicators | 1+3 FIX | 8 min | 2 min |
 
 ## Accumulated Context
@@ -77,6 +77,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-16
-Stopped at: v1.2 milestone complete
+Last session: 2026-01-20
+Stopped at: Completed 09-03-FIX (per-tab view mode fix)
 Resume file: None
