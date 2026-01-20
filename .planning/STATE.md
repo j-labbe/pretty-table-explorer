@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-01-16)
 
 ## Current Position
 
-Phase: 9 of 10 (Multiple Tables - FIX5)
-Plan: 09-03-FIX5 complete
-Status: UAT issues fixed (Tab cycling and pane duplication)
-Last activity: 2026-01-20 — Completed 09-03-FIX5 (Tab cycling + close_tab fix)
+Phase: 9 of 10 (Multiple Tables - FIX6)
+Plan: 09-03-FIX6 complete
+Status: UAT issues fixed (Tab key simplified)
+Last activity: 2026-01-20 — Completed 09-03-FIX6 (Tab key simplification)
 
 Progress: ████████████████ 100% (v1.2 + fixes)
 
@@ -25,15 +25,15 @@ Progress: ████████████████ 100% (v1.2 + fixes)
   - Phases 5-6 complete (4 plans)
   - See: .planning/milestones/v1.1-ROADMAP.md
 - ✅ v1.2 Advanced Viewing — shipped 2026-01-16
-  - Phases 7-10 complete (9 plans + 6 FIX plans)
+  - Phases 7-10 complete (9 plans + 7 FIX plans)
   - See: .planning/milestones/v1.2-ROADMAP.md
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21 + 9 FIX
+- Total plans completed: 21 + 10 FIX
 - Average duration: ~4.5 min
-- Total execution time: ~108 min
+- Total execution time: ~109 min
 
 **By Phase:**
 
@@ -47,7 +47,7 @@ Progress: ████████████████ 100% (v1.2 + fixes)
 | 6. Installation & Updates | 2 | 9 min | 4.5 min |
 | 7. Column Controls | 4 | 16 min | 4 min |
 | 8. Data Export | 1 | 5 min | 5 min |
-| 9. Multiple Tables | 3+5 FIX | 29 min | 3.6 min |
+| 9. Multiple Tables | 3+6 FIX | 30 min | 3.3 min |
 | 10. Scroll Indicators | 1+3 FIX | 8 min | 2 min |
 
 ## Accumulated Context
@@ -78,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed 09-03-FIX5 (Tab cycling + close_tab fix)
+Stopped at: Completed 09-03-FIX6 (Tab key simplification)
 Resume file: None

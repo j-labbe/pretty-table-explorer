@@ -1,7 +1,7 @@
 # UAT Issues: Phase 9 Plan 3
 
-**Tested:** 2026-01-20 (re-test after 09-03-FIX3)
-**Source:** .planning/phases/09-multiple-tables/09-03-FIX3-SUMMARY.md
+**Tested:** 2026-01-20 (re-test after 09-03-FIX6)
+**Source:** .planning/phases/09-multiple-tables/09-03-FIX6-SUMMARY.md
 **Tester:** User via /gsd:verify-work
 
 ## Open Issues
@@ -9,6 +9,38 @@
 None.
 
 ## Resolved Issues
+
+### UAT-011: Tab key should only switch pane focus, not cycle tabs
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX6
+**Commit:** 607d04f
+**Description:** Tab key now only toggles focus between panes in split view.
+**Verification:** Tab no longer cycles tabs when in right pane.
+
+### UAT-009: Enter key does nothing in right pane
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Verified in 09-03-FIX5
+**Commit:** a766e7f
+**Description:** Enter key now opens tables in the focused right pane correctly.
+**Verification:** User confirmed Enter works in right pane.
+
+### UAT-010: Closing all tabs in right pane duplicates left pane view
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX5
+**Commit:** a766e7f
+**Description:** Closing tabs no longer causes pane duplication; focus transfers correctly.
+**Verification:** User confirmed panes show different content after tab close.
+
+### UAT-008: Tab cycling in right pane affects left pane instead
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX5, but behavior change requested (see UAT-011)
+**Commit:** b151acb
+**Description:** Tab now cycles tabs in right pane correctly, but user wants this behavior removed entirely.
+**Note:** Superseded by UAT-011 - user wants Tab to only switch focus, not cycle tabs.
 
 ### UAT-007: Enter key opens table in wrong pane in split view
 
@@ -67,5 +99,5 @@ None.
 ---
 
 *Phase: 09-multiple-tables*
-*Plan: 03-FIX3*
+*Plan: 03-FIX5*
 *Re-tested: 2026-01-20*
