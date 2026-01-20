@@ -73,16 +73,16 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 Plans:
 - [x] 11-01: State Module Extraction — completed 2026-01-20
 
-#### Phase 12: UI Layer Extraction
+#### Phase 12: UI Layer Extraction — ✅ Complete
 
 **Goal**: Extract views, rendering, and widgets into dedicated modules
 **Depends on**: Phase 11
 **Research**: Unlikely (internal patterns, refactoring)
-**Plans**: 0/2
+**Plans**: 2/2 complete
 
 Plans:
-- [ ] 12-01: Render Module Extraction — extract rendering functions to src/render.rs
-- [ ] 12-02: Main Loop UI Extraction — extract UI helpers (tab bar, controls, input bar)
+- [x] 12-01: Render Module Extraction — completed 2026-01-20
+- [x] 12-02: Main Loop UI Extraction — completed 2026-01-20
 
 #### Phase 13: Handlers & Cleanup
 
@@ -109,7 +109,7 @@ Plans:
 | 9. Multiple Tables | v1.2 | 3/3 | Complete | 2026-01-15 |
 | 10. Scroll Indicators | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 11. Core Types Extraction | v1.3 | 1/1 | Complete | 2026-01-20 |
-| 12. UI Layer Extraction | v1.3 | 0/? | Not started | - |
+| 12. UI Layer Extraction | v1.3 | 2/2 | Complete | 2026-01-20 |
 | 13. Handlers & Cleanup | v1.3 | 0/? | Not started | - |
 
 ## Domain Expertise
