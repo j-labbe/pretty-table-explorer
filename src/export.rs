@@ -158,7 +158,7 @@ mod tests {
         let parsed: Vec<HashMap<String, String>> = serde_json::from_str(&result).unwrap();
         assert_eq!(parsed.len(), 2);
         assert_eq!(parsed[0].get("name").unwrap(), "Alice");
-        assert!(parsed[0].get("id").is_none()); // Not included
+        assert!(!parsed[0].contains_key("id")); // Not included
     }
 
     #[test]
