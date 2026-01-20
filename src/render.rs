@@ -164,7 +164,6 @@ pub fn render_table_pane(
             // Use all available width for this single column
             render_cols.push(data_idx);
             last_col_truncated_width = Some(width_with_right_reserved);
-            cumulative_width = width_with_right_reserved;
             last_render_idx = vis_idx;
             break;
         } else {
@@ -175,7 +174,6 @@ pub fn render_table_pane(
                 // Show partial content if at least 3 chars available (meaningful preview)
                 render_cols.push(data_idx);
                 last_col_truncated_width = Some(remaining);
-                cumulative_width = width_with_right_reserved;
                 last_render_idx = vis_idx;
             }
             break;
@@ -211,7 +209,6 @@ pub fn render_table_pane(
                 // First column wider than viewport - show partial
                 render_cols.push(data_idx);
                 last_col_truncated_width = Some(width_minus_left);
-                cumulative_width = width_minus_left;
                 last_render_idx = vis_idx;
                 break;
             } else {
@@ -220,7 +217,6 @@ pub fn render_table_pane(
                 if remaining >= 3 {
                     render_cols.push(data_idx);
                     last_col_truncated_width = Some(remaining);
-                    cumulative_width = width_minus_left;
                     last_render_idx = vis_idx;
                 }
                 break;
