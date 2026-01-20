@@ -8,6 +8,15 @@ use ratatui::widgets::TableState;
 use crate::column::ColumnConfig;
 use crate::parser::TableData;
 
+/// View mode for database browser.
+/// Determines what controls are shown and how navigation behaves.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ViewMode {
+    TableList, // Viewing list of tables (can select with Enter)
+    TableData, // Viewing table contents (Esc to go back)
+    PipeData,  // Viewing piped data (no back navigation)
+}
+
 /// A single tab containing table data and its display state.
 #[derive(Debug, Clone)]
 pub struct Tab {
@@ -25,11 +34,13 @@ pub struct Tab {
     pub scroll_col_offset: usize,
     /// Selected column index within visible_cols
     pub selected_visible_col: usize,
+    /// View mode for this tab (determines available controls)
+    pub view_mode: ViewMode,
 }
 
 impl Tab {
-    /// Create a new tab with the given name and data.
-    pub fn new(name: String, data: TableData) -> Self {
+    /// Create a new tab with the given name, data, and view mode.
+    pub fn new(name: String, data: TableData, view_mode: ViewMode) -> Self {
         let num_cols = data.headers.len();
         Self {
             name,
@@ -39,6 +50,7 @@ impl Tab {
             table_state: TableState::default().with_selected(Some(0)),
             scroll_col_offset: 0,
             selected_visible_col: 0,
+            view_mode,
         }
     }
 }
@@ -70,10 +82,10 @@ impl Workspace {
         }
     }
 
-    /// Add a new tab with the given name and data.
+    /// Add a new tab with the given name, data, and view mode.
     /// Returns the index of the new tab.
-    pub fn add_tab(&mut self, name: String, data: TableData) -> usize {
-        let tab = Tab::new(name, data);
+    pub fn add_tab(&mut self, name: String, data: TableData, view_mode: ViewMode) -> usize {
+        let tab = Tab::new(name, data, view_mode);
         self.tabs.push(tab);
         self.tabs.len() - 1
     }
@@ -228,7 +240,7 @@ mod tests {
     #[test]
     fn test_add_tab() {
         let mut ws = Workspace::new();
-        let idx = ws.add_tab("Test".to_string(), sample_data());
+        let idx = ws.add_tab("Test".to_string(), sample_data(), ViewMode::TableData);
         assert_eq!(idx, 0);
         assert_eq!(ws.tab_count(), 1);
         assert!(ws.active_tab().is_some());
@@ -238,9 +250,9 @@ mod tests {
     #[test]
     fn test_switch_tabs() {
         let mut ws = Workspace::new();
-        ws.add_tab("Tab1".to_string(), sample_data());
-        ws.add_tab("Tab2".to_string(), sample_data());
-        ws.add_tab("Tab3".to_string(), sample_data());
+        ws.add_tab("Tab1".to_string(), sample_data(), ViewMode::TableData);
+        ws.add_tab("Tab2".to_string(), sample_data(), ViewMode::TableData);
+        ws.add_tab("Tab3".to_string(), sample_data(), ViewMode::TableData);
 
         assert_eq!(ws.active_idx, 0);
 
@@ -261,8 +273,8 @@ mod tests {
     #[test]
     fn test_switch_to() {
         let mut ws = Workspace::new();
-        ws.add_tab("Tab1".to_string(), sample_data());
-        ws.add_tab("Tab2".to_string(), sample_data());
+        ws.add_tab("Tab1".to_string(), sample_data(), ViewMode::TableData);
+        ws.add_tab("Tab2".to_string(), sample_data(), ViewMode::TableData);
 
         ws.switch_to(1);
         assert_eq!(ws.active_idx, 1);
@@ -275,9 +287,9 @@ mod tests {
     #[test]
     fn test_close_tab() {
         let mut ws = Workspace::new();
-        ws.add_tab("Tab1".to_string(), sample_data());
-        ws.add_tab("Tab2".to_string(), sample_data());
-        ws.add_tab("Tab3".to_string(), sample_data());
+        ws.add_tab("Tab1".to_string(), sample_data(), ViewMode::TableData);
+        ws.add_tab("Tab2".to_string(), sample_data(), ViewMode::TableData);
+        ws.add_tab("Tab3".to_string(), sample_data(), ViewMode::TableData);
 
         ws.switch_to(2);
         ws.close_tab(2);
@@ -293,8 +305,8 @@ mod tests {
     #[test]
     fn test_tab_names() {
         let mut ws = Workspace::new();
-        ws.add_tab("Alpha".to_string(), sample_data());
-        ws.add_tab("Beta".to_string(), sample_data());
+        ws.add_tab("Alpha".to_string(), sample_data(), ViewMode::TableData);
+        ws.add_tab("Beta".to_string(), sample_data(), ViewMode::TableData);
 
         let names = ws.tab_names();
         assert_eq!(names, vec!["Alpha", "Beta"]);
@@ -303,12 +315,13 @@ mod tests {
     #[test]
     fn test_tab_initialization() {
         let data = sample_data();
-        let tab = Tab::new("Test".to_string(), data);
+        let tab = Tab::new("Test".to_string(), data, ViewMode::TableData);
 
         assert_eq!(tab.name, "Test");
         assert_eq!(tab.filter_text, "");
         assert_eq!(tab.scroll_col_offset, 0);
         assert_eq!(tab.selected_visible_col, 0);
         assert_eq!(tab.table_state.selected(), Some(0));
+        assert_eq!(tab.view_mode, ViewMode::TableData);
     }
 }

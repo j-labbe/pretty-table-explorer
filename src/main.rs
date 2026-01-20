@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use clap::{Parser, Subcommand};
 use column::ColumnConfig;
 use parser::TableData;
-use workspace::Workspace;
+use workspace::{ViewMode, Workspace};
 
 /// Interactive terminal table viewer for PostgreSQL
 #[derive(Parser, Debug)]
@@ -56,19 +56,12 @@ enum AppMode {
     ExportFilename, // Format selected, entering filename
 }
 
-/// View mode for database browser.
-#[derive(Clone, Copy, PartialEq)]
-enum ViewMode {
-    TableList, // Viewing list of tables (can select with Enter)
-    TableData, // Viewing table contents (Esc to go back)
-    PipeData,  // Viewing piped data (no back navigation)
-}
 
 /// Pending action to be executed after dropping mutable tab reference.
 /// Used to avoid borrow conflicts when creating new tabs.
 enum PendingAction {
     None,
-    CreateTab { name: String, data: TableData },
+    CreateTab { name: String, data: TableData, view_mode: ViewMode },
 }
 
 /// Data needed to render a single table pane.
@@ -562,8 +555,8 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
-    // Get table data, database client, and view mode from either database or stdin
-    let (table_data, mut db_client, mut view_mode) =
+    // Get table data, database client, and initial view mode from either database or stdin
+    let (table_data, mut db_client, initial_view_mode) =
         if let Some((conn_string, query, has_custom_query)) = db_config {
             // Direct database connection mode
             match db::connect(&conn_string) {
@@ -624,7 +617,7 @@ fn main() -> io::Result<()> {
         };
 
     // Store the table list for back navigation (only in DB mode without custom query)
-    let table_list_cache: Option<TableData> = if view_mode == ViewMode::TableList {
+    let table_list_cache: Option<TableData> = if initial_view_mode == ViewMode::TableList {
         Some(table_data.clone())
     } else {
         None
@@ -633,14 +626,14 @@ fn main() -> io::Result<()> {
     // Track current table name when viewing table data
     let mut current_table_name: Option<String> = None;
 
-    // Create workspace and add initial tab
+    // Create workspace and add initial tab with its view mode
     let mut workspace = Workspace::new();
-    let tab_name = match view_mode {
+    let tab_name = match initial_view_mode {
         ViewMode::TableList => "Tables".to_string(),
         ViewMode::TableData => current_table_name.clone().unwrap_or_else(|| "Query".to_string()),
         ViewMode::PipeData => "Data".to_string(),
     };
-    workspace.add_tab(tab_name, table_data);
+    workspace.add_tab(tab_name, table_data, initial_view_mode);
 
     // Last visible column index from previous render (for scroll-right detection)
     // Using StdCell to allow updating from within the draw closure
@@ -779,8 +772,23 @@ fn main() -> io::Result<()> {
         let input_buf = input_buffer.clone();
         let status = status_message.clone();
 
-        // Capture view mode for closure
-        let current_view = view_mode;
+        // Capture view modes for closure (per-tab view modes)
+        let left_view_mode = workspace.tabs.get(workspace.active_idx)
+            .map(|t| t.view_mode)
+            .unwrap_or(ViewMode::PipeData);
+        let right_view_mode = if is_split {
+            workspace.tabs.get(workspace.split_idx)
+                .map(|t| t.view_mode)
+                .unwrap_or(ViewMode::PipeData)
+        } else {
+            left_view_mode
+        };
+        // Focused tab's view mode for controls display
+        let current_view = if is_split && !workspace.focus_left {
+            right_view_mode
+        } else {
+            left_view_mode
+        };
         let table_name = current_table_name.clone();
 
         // Capture focus state
@@ -846,7 +854,7 @@ fn main() -> io::Result<()> {
                     let pane_title = build_pane_title(
                         pane_data,
                         &table_name,
-                        current_view,
+                        left_view_mode,
                         focus_left,
                     );
                     render_table_pane(
@@ -865,7 +873,7 @@ fn main() -> io::Result<()> {
                     let pane_title = build_pane_title(
                         pane_data,
                         &table_name,
-                        current_view,
+                        right_view_mode,
                         !focus_left,
                     );
                     render_table_pane(
@@ -1025,7 +1033,7 @@ fn main() -> io::Result<()> {
 
                             // Enter: Select table in TableList mode
                             KeyCode::Enter => {
-                                if view_mode == ViewMode::TableList {
+                                if tab.view_mode == ViewMode::TableList {
                                     if let Some(ref mut client) = db_client {
                                         if let Some(selected) = tab.table_state.selected() {
                                             // Get table name from selected row (first column)
@@ -1061,6 +1069,7 @@ fn main() -> io::Result<()> {
                                                                 pending_action = PendingAction::CreateTab {
                                                                     name: tbl_name.clone(),
                                                                     data,
+                                                                    view_mode: ViewMode::TableData,
                                                                 };
                                                             }
                                                         }
@@ -1080,7 +1089,7 @@ fn main() -> io::Result<()> {
 
                             // Esc: Go back to table list from TableData mode
                             KeyCode::Esc => {
-                                if view_mode == ViewMode::TableData {
+                                if tab.view_mode == ViewMode::TableData {
                                     if let Some(ref cached) = table_list_cache {
                                         tab.data = cached.clone();
                                         tab.column_config = ColumnConfig::new(tab.data.headers.len());
@@ -1089,7 +1098,7 @@ fn main() -> io::Result<()> {
                                         tab.table_state = TableState::default().with_selected(Some(0));
                                         tab.filter_text.clear();
                                         current_table_name = None;
-                                        view_mode = ViewMode::TableList;
+                                        tab.view_mode = ViewMode::TableList;
                                     }
                                 }
                             }
@@ -1269,7 +1278,7 @@ fn main() -> io::Result<()> {
                             // Export data (E key)
                             KeyCode::Char('E') => {
                                 // Export available in TableData and PipeData modes
-                                if view_mode == ViewMode::TableData || view_mode == ViewMode::PipeData {
+                                if tab.view_mode == ViewMode::TableData || tab.view_mode == ViewMode::PipeData {
                                     current_mode = AppMode::ExportFormat;
                                 }
                             }
@@ -1371,6 +1380,7 @@ fn main() -> io::Result<()> {
                                                     pending_action = PendingAction::CreateTab {
                                                         name: tab_name,
                                                         data,
+                                                        view_mode: ViewMode::TableData,
                                                     };
                                                 }
                                             }
@@ -1517,10 +1527,9 @@ fn main() -> io::Result<()> {
                 }
 
                 // Process pending action (tab borrow has been dropped)
-                if let PendingAction::CreateTab { name, data } = pending_action {
-                    let new_idx = workspace.add_tab(name, data);
+                if let PendingAction::CreateTab { name, data, view_mode } = pending_action {
+                    let new_idx = workspace.add_tab(name, data, view_mode);
                     workspace.switch_to(new_idx);
-                    view_mode = ViewMode::TableData;
                     status_message = Some(format!("Opened in tab {}", new_idx + 1));
                     status_message_time = Some(Instant::now());
                 }
