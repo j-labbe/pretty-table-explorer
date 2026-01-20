@@ -78,10 +78,11 @@ Plans:
 **Goal**: Extract views, rendering, and widgets into dedicated modules
 **Depends on**: Phase 11
 **Research**: Unlikely (internal patterns, refactoring)
-**Plans**: TBD
+**Plans**: 0/2
 
 Plans:
-- [ ] 12-01: TBD (run /gsd:plan-phase 12 to break down)
+- [ ] 12-01: Render Module Extraction — extract rendering functions to src/render.rs
+- [ ] 12-02: Main Loop UI Extraction — extract UI helpers (tab bar, controls, input bar)
 
 #### Phase 13: Handlers & Cleanup
 
