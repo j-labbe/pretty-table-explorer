@@ -89,10 +89,11 @@ Plans:
 **Goal**: Extract input handlers, commands, utils; remove dead code; fix clippy warnings; final polish
 **Depends on**: Phase 12
 **Research**: Unlikely (internal patterns, refactoring)
-**Plans**: TBD
+**Plans**: 2
 
 Plans:
-- [ ] 13-01: TBD (run /gsd:plan-phase 13 to break down)
+- [ ] 13-01: Handler Module Extraction — extract keyboard handlers from main.rs
+- [ ] 13-02: Clippy Fixes and Dead Code Removal — fix warnings, remove unused code
 
 ## Progress
 
@@ -110,7 +111,7 @@ Plans:
 | 10. Scroll Indicators | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 11. Core Types Extraction | v1.3 | 1/1 | Complete | 2026-01-20 |
 | 12. UI Layer Extraction | v1.3 | 2/2 | Complete | 2026-01-20 |
-| 13. Handlers & Cleanup | v1.3 | 0/? | Not started | - |
+| 13. Handlers & Cleanup | v1.3 | 0/2 | Planned | - |
 
 ## Domain Expertise
 
