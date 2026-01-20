@@ -63,15 +63,15 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 **Milestone Goal:** Refactor monolithic main.rs into clean, layered architecture for better maintainability
 
-#### Phase 11: Core Types Extraction
+#### Phase 11: Core Types Extraction — ✅ Complete
 
 **Goal**: Extract models, state, and data structures (AppState, Tab, TableData) into dedicated modules
 **Depends on**: Previous milestone complete
 **Research**: Unlikely (internal patterns, refactoring)
-**Plans**: TBD
+**Plans**: 1/1 complete
 
 Plans:
-- [ ] 11-01: TBD (run /gsd:plan-phase 11 to break down)
+- [x] 11-01: State Module Extraction — completed 2026-01-20
 
 #### Phase 12: UI Layer Extraction
 
@@ -107,7 +107,7 @@ Plans:
 | 8. Data Export | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 9. Multiple Tables | v1.2 | 3/3 | Complete | 2026-01-15 |
 | 10. Scroll Indicators | v1.2 | 1/1 | Complete | 2026-01-15 |
-| 11. Core Types Extraction | v1.3 | 0/? | Not started | - |
+| 11. Core Types Extraction | v1.3 | 1/1 | Complete | 2026-01-20 |
 | 12. UI Layer Extraction | v1.3 | 0/? | Not started | - |
 | 13. Handlers & Cleanup | v1.3 | 0/? | Not started | - |
 
