@@ -1,5 +1,33 @@
 # Project Milestones: Pretty Table Explorer
 
+## v1.3 Code Quality (Shipped: 2026-01-20)
+
+**Delivered:** Refactored monolithic main.rs into clean, layered architecture for better maintainability.
+
+**Phases completed:** 11-13 (5 plans total)
+
+**Key accomplishments:**
+
+- Created state.rs module with AppMode, PendingAction, PaneRenderData types
+- Created render.rs module with table rendering functions (~480 lines)
+- Created handlers.rs module with keyboard input handlers (~600 lines)
+- Reduced main.rs from ~1520 lines to 691 lines (55% reduction)
+- Achieved zero clippy warnings with -D warnings flag
+- Removed dead code methods from workspace.rs
+
+**Stats:**
+
+- 17 files modified
+- 3,092 lines of Rust (total codebase)
+- 3 phases, 5 plans
+- Same day (2026-01-20)
+
+**Git range:** `refactor(11-01)` -> `docs(13)`
+
+**What's next:** Consider new features, performance improvements, or v2.0 planning
+
+---
+
 ## v1.2.1 Patch (Shipped: 2026-01-20)
 
 **Delivered:** Post-release bug fixes for split view multi-tab functionality.

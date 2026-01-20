@@ -71,14 +71,17 @@ Target environment is Ubuntu Linux running under WSL2.
 | PaneRenderData pattern | Pre-compute render state to avoid borrow conflicts | ✓ Good — clean split view implementation |
 | Tab-isolated state | All table state in Tab struct, not main scope | ✓ Good — clean multi-tab architecture |
 | Two-pass indicator width calc | Reserve space for right indicator, recalc if no overflow | ✓ Good — proper scroll indicator positioning |
+| KeyAction/WorkspaceOp enums | Defer workspace operations to avoid borrow conflicts | ✓ Good — clean handler extraction without global state |
+| Module extraction pattern | Extract types→render→handlers sequentially | ✓ Good — 55% main.rs reduction, zero warnings |
 
 ## Context
 
-Shipped v1.2 with ~2,800 lines of Rust.
+Shipped v1.3 with 3,092 lines of Rust across 10 source files.
 Tech stack: Rust 2021 edition, ratatui v0.29, crossterm v0.28, postgres v0.19, clap v4, ureq v2, sha2 v0.10, csv v1, serde v1, serde_json v1.
 Dual-mode operation: stdin pipe for psql output, --connect for direct PostgreSQL access.
 Advanced viewing: column controls (resize/hide/reorder), multi-tab workspaces with split view, CSV/JSON export, scroll indicators.
 Distribution: GitHub releases for 4 platforms, install script, self-update command.
+Architecture: Clean module separation (main.rs 691 lines, handlers.rs 607 lines, render.rs 481 lines, workspace.rs 315 lines).
 
 ---
-*Last updated: 2026-01-20 after v1.2.1 milestone*
+*Last updated: 2026-01-20 after v1.3 milestone*

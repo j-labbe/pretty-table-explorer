@@ -18,6 +18,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 - [v1.1 Distribution](milestones/v1.1-ROADMAP.md) (Phases 5-6) — SHIPPED 2026-01-14
 - [v1.2 Advanced Viewing](milestones/v1.2-ROADMAP.md) (Phases 7-10) — SHIPPED 2026-01-16
 - [v1.2.1 Patch](milestones/v1.2.1-ROADMAP.md) (Phase 9 FIX) — SHIPPED 2026-01-20
+- [v1.3 Code Quality](milestones/v1.3-ROADMAP.md) (Phases 11-13) — SHIPPED 2026-01-20
 
 <details>
 <summary> v1.0 MVP (Phases 1-4) — SHIPPED 2026-01-14</summary>
@@ -59,41 +60,14 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
-### ✅ v1.3 Code Quality (Complete)
+<details>
+<summary> v1.3 Code Quality (Phases 11-13) — SHIPPED 2026-01-20</summary>
 
-**Milestone Goal:** Refactor monolithic main.rs into clean, layered architecture for better maintainability
+- [x] Phase 11: Core Types Extraction (1/1 plan) — completed 2026-01-20
+- [x] Phase 12: UI Layer Extraction (2/2 plans) — completed 2026-01-20
+- [x] Phase 13: Handlers & Cleanup (2/2 plans) — completed 2026-01-20
 
-#### Phase 11: Core Types Extraction — ✅ Complete
-
-**Goal**: Extract models, state, and data structures (AppState, Tab, TableData) into dedicated modules
-**Depends on**: Previous milestone complete
-**Research**: Unlikely (internal patterns, refactoring)
-**Plans**: 1/1 complete
-
-Plans:
-- [x] 11-01: State Module Extraction — completed 2026-01-20
-
-#### Phase 12: UI Layer Extraction — ✅ Complete
-
-**Goal**: Extract views, rendering, and widgets into dedicated modules
-**Depends on**: Phase 11
-**Research**: Unlikely (internal patterns, refactoring)
-**Plans**: 2/2 complete
-
-Plans:
-- [x] 12-01: Render Module Extraction — completed 2026-01-20
-- [x] 12-02: Main Loop UI Extraction — completed 2026-01-20
-
-#### Phase 13: Handlers & Cleanup — ✅ Complete
-
-**Goal**: Extract input handlers, commands, utils; remove dead code; fix clippy warnings; final polish
-**Depends on**: Phase 12
-**Research**: Unlikely (internal patterns, refactoring)
-**Plans**: 2/2 complete
-
-Plans:
-- [x] 13-01: Handler Module Extraction — completed 2026-01-20
-- [x] 13-02: Clippy Fixes and Dead Code Removal — completed 2026-01-20
+</details>
 
 ## Progress
 
