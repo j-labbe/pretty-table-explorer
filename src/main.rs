@@ -14,7 +14,10 @@ use std::time::{Duration, Instant};
 use clap::{Parser, Subcommand};
 use column::ColumnConfig;
 use parser::TableData;
-use render::{build_pane_render_data, build_pane_title, render_table_pane, calculate_auto_widths};
+use render::{
+    build_pane_render_data, build_pane_title, render_table_pane, calculate_auto_widths,
+    build_tab_bar, build_controls_hint, render_input_bar, render_format_prompt,
+};
 use state::{AppMode, PendingAction};
 use workspace::{ViewMode, Workspace};
 
@@ -47,7 +50,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, TableState},
+    widgets::{Paragraph, TableState},
 };
 
 /// Initialize the terminal for TUI rendering.
@@ -227,32 +230,9 @@ fn main() -> io::Result<()> {
     // Main event loop
     loop {
         // Build tab bar string BEFORE getting mutable reference to tab
-        // (only shown when multiple tabs exist)
-        // Format: "1:name 2:name [3:active] 4:name | " with numbers matching keyboard shortcuts
+        let tab_bar = build_tab_bar(&workspace);
         let tab_count = workspace.tab_count();
         let is_split = workspace.split_active && tab_count > 1;
-        let tab_bar = if tab_count > 1 {
-            let names: Vec<String> = workspace.tabs.iter().enumerate().map(|(i, t)| {
-                // Truncate long tab names to prevent title overflow
-                let name = if t.name.len() > 15 {
-                    format!("{}...", &t.name[..12])
-                } else {
-                    t.name.clone()
-                };
-                // Show index number (1-based) with each tab name
-                // Mark both active and split tabs in split mode
-                if is_split && i == workspace.split_idx && i != workspace.active_idx {
-                    format!("<{}:{}>", i + 1, name)
-                } else if i == workspace.active_idx {
-                    format!("[{}:{}]", i + 1, name)
-                } else {
-                    format!("{}:{}", i + 1, name)
-                }
-            }).collect();
-            format!("{} | ", names.join(" "))
-        } else {
-            String::new()
-        };
 
         // Clamp selected_visible_col and scroll_col_offset for all relevant tabs
         // This needs to happen before building render data
@@ -402,16 +382,6 @@ fn main() -> io::Result<()> {
                 .map(|s| format!("{} ", s))
                 .unwrap_or_default();
 
-            // Build context-appropriate controls hint
-            let split_controls = if is_split {
-                "Tab: switch pane, V: unsplit, "
-            } else if tab_count > 1 {
-                "V: split, "
-            } else {
-                ""
-            };
-            let tab_controls = if tab_count > 1 { "1-9: tab, W: close, " } else { "" };
-
             if is_split {
                 // Split view: vertical layout with tab bar, panes, and controls
                 let split_layout = Layout::default()
@@ -477,11 +447,7 @@ fn main() -> io::Result<()> {
                 }
 
                 // Build and render controls hint at bottom
-                let controls: String = match current_view {
-                    ViewMode::TableList => format!("{}{}Enter: select, /: filter, q: quit", split_controls, tab_controls),
-                    ViewMode::TableData => format!("{}{}+/-: width, H/S: hide/show, E: export, 0: reset, Esc: back, q: quit", split_controls, tab_controls),
-                    ViewMode::PipeData => format!("{}{}+/-: width, H/S: hide/show, E: export, 0: reset, q: quit", split_controls, tab_controls),
-                };
+                let controls = build_controls_hint(current_view, is_split, tab_count);
                 let controls_widget = Paragraph::new(format!("{}{}", status_info, controls))
                     .style(Style::default().fg(Color::DarkGray));
                 frame.render_widget(controls_widget, controls_area);
@@ -527,14 +493,12 @@ fn main() -> io::Result<()> {
                         String::new()
                     };
 
-                    let (context_label, controls): (&str, String) = match current_view {
-                        ViewMode::TableList => ("Tables", format!("{}{}Enter: select, /: filter, q: quit", split_controls, tab_controls)),
-                        ViewMode::TableData => {
-                            let label = table_name.as_deref().unwrap_or("Query Result");
-                            (label, format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit", split_controls, tab_controls))
-                        }
-                        ViewMode::PipeData => ("Data", format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit", split_controls, tab_controls)),
+                    let context_label: &str = match current_view {
+                        ViewMode::TableList => "Tables",
+                        ViewMode::TableData => table_name.as_deref().unwrap_or("Query Result"),
+                        ViewMode::PipeData => "Data",
                     };
+                    let controls = build_controls_hint(current_view, is_split, tab_count);
 
                     let title = format!(
                         "{}{} {} {}{}{}",
@@ -555,31 +519,12 @@ fn main() -> io::Result<()> {
 
             // Render input bar when in input mode
             if show_input_bar {
-                let input_area = chunks[1];
-                let (prefix, style) = match mode {
-                    AppMode::QueryInput => (":", Style::default().fg(Color::Cyan)),
-                    AppMode::SearchInput => ("/", Style::default().fg(Color::Yellow)),
-                    AppMode::ExportFilename => ("Save as: ", Style::default().fg(Color::Green)),
-                    AppMode::Normal | AppMode::ExportFormat => ("", Style::default()),
-                };
-
-                let input_text = format!("{}{}", prefix, input_buf);
-                let input_widget = Paragraph::new(input_text)
-                    .style(style)
-                    .block(Block::default().borders(Borders::ALL));
-
-                frame.render_widget(input_widget, input_area);
+                render_input_bar(frame, chunks[1], mode, &input_buf);
             }
 
             // Render format selection prompt
             if show_format_prompt {
-                let prompt_area = chunks[1];
-                let prompt_text = "Export format: [C]SV or [J]SON (Esc to cancel)";
-                let prompt_widget = Paragraph::new(prompt_text)
-                    .style(Style::default().fg(Color::Green))
-                    .block(Block::default().borders(Borders::ALL));
-
-                frame.render_widget(prompt_widget, prompt_area);
+                render_format_prompt(frame, chunks[1]);
             }
         })?;
 
