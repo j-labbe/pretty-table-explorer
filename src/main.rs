@@ -1310,20 +1310,34 @@ fn main() -> io::Result<()> {
                                 }
                             }
 
-                            // Tab navigation: switch panes in split mode, cycle tabs otherwise
+                            // Tab navigation: cycle tabs in pane, switch focus in split mode
                             KeyCode::Tab => {
                                 if workspace.split_active {
-                                    // In split view, Tab switches focus between panes
-                                    workspace.toggle_focus();
+                                    if workspace.focus_left {
+                                        // Left pane focused: Tab switches to right pane
+                                        workspace.toggle_focus();
+                                    } else {
+                                        // Right pane focused: Tab cycles which tab is shown in right pane
+                                        workspace.split_idx = (workspace.split_idx + 1) % workspace.tab_count();
+                                    }
                                 } else if workspace.tab_count() > 1 {
                                     workspace.next_tab();
                                 }
                             }
                             KeyCode::BackTab => {
-                                // Shift+Tab: same behavior as Tab
+                                // Shift+Tab: reverse of Tab
                                 if workspace.split_active {
-                                    // In split view, Shift+Tab also switches focus
-                                    workspace.toggle_focus();
+                                    if workspace.focus_left {
+                                        // Left pane focused: Shift+Tab switches to right pane
+                                        workspace.toggle_focus();
+                                    } else {
+                                        // Right pane focused: Shift+Tab cycles backwards
+                                        if workspace.split_idx == 0 {
+                                            workspace.split_idx = workspace.tab_count() - 1;
+                                        } else {
+                                            workspace.split_idx -= 1;
+                                        }
+                                    }
                                 } else if workspace.tab_count() > 1 {
                                     workspace.prev_tab();
                                 }
