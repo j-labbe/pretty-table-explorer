@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-16)
 
 ## Current Position
 
-Phase: 9 of 10 (Multiple Tables - FIX)
-Plan: 09-03-FIX complete
-Status: UAT issues fixed
-Last activity: 2026-01-20 — Completed 09-03-FIX (per-tab view mode)
+Phase: 9 of 10 (Multiple Tables - FIX2)
+Plan: 09-03-FIX2 complete
+Status: UAT issues fixed (split view scrolling + pane switching)
+Last activity: 2026-01-20 — Completed 09-03-FIX2 (split view fixes)
 
-Progress: ████████████████ 100% (v1.2 + fix)
+Progress: ████████████████ 100% (v1.2 + fixes)
 
 ## Milestone Status
 
@@ -31,7 +31,7 @@ Progress: ████████████████ 100% (v1.2 + fix)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21 + 5 FIX
+- Total plans completed: 21 + 6 FIX
 - Average duration: ~4.6 min
 - Total execution time: ~106 min
 
@@ -47,7 +47,7 @@ Progress: ████████████████ 100% (v1.2 + fix)
 | 6. Installation & Updates | 2 | 9 min | 4.5 min |
 | 7. Column Controls | 4 | 16 min | 4 min |
 | 8. Data Export | 1 | 5 min | 5 min |
-| 9. Multiple Tables | 3+1 FIX | 23 min | 5.8 min |
+| 9. Multiple Tables | 3+2 FIX | 25 min | 5 min |
 | 10. Scroll Indicators | 1+3 FIX | 8 min | 2 min |
 
 ## Accumulated Context
@@ -78,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed 09-03-FIX (per-tab view mode fix)
+Stopped at: Completed 09-03-FIX2 (split view fixes)
 Resume file: None
