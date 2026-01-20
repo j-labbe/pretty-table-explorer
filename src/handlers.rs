@@ -58,6 +58,7 @@ pub enum WorkspaceOp {
 ///
 /// Takes references to the focused tab and other state needed for handling.
 /// Returns a KeyAction indicating what the main loop should do.
+#[allow(clippy::too_many_arguments)]
 pub fn handle_normal_mode(
     key: &KeyEvent,
     tab: &mut Tab,
