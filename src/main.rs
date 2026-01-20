@@ -1291,31 +1291,22 @@ fn main() -> io::Result<()> {
                                 }
                             }
 
-                            // Tab navigation: cycle with Tab/Shift+Tab
-                            // In split mode with right pane focused, changes split_idx instead
+                            // Tab navigation: switch panes in split mode, cycle tabs otherwise
                             KeyCode::Tab => {
-                                if workspace.tab_count() > 1 {
-                                    if workspace.split_active && !workspace.focus_left {
-                                        // Cycle right pane through tabs
-                                        workspace.split_idx = (workspace.split_idx + 1) % workspace.tab_count();
-                                    } else {
-                                        workspace.next_tab();
-                                    }
+                                if workspace.split_active {
+                                    // In split view, Tab switches focus between panes
+                                    workspace.toggle_focus();
+                                } else if workspace.tab_count() > 1 {
+                                    workspace.next_tab();
                                 }
                             }
                             KeyCode::BackTab => {
-                                // Shift+Tab
-                                if workspace.tab_count() > 1 {
-                                    if workspace.split_active && !workspace.focus_left {
-                                        // Cycle right pane through tabs (backwards)
-                                        if workspace.split_idx == 0 {
-                                            workspace.split_idx = workspace.tab_count() - 1;
-                                        } else {
-                                            workspace.split_idx -= 1;
-                                        }
-                                    } else {
-                                        workspace.prev_tab();
-                                    }
+                                // Shift+Tab: same behavior as Tab
+                                if workspace.split_active {
+                                    // In split view, Shift+Tab also switches focus
+                                    workspace.toggle_focus();
+                                } else if workspace.tab_count() > 1 {
+                                    workspace.prev_tab();
                                 }
                             }
 
