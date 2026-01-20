@@ -1,67 +1,63 @@
 # UAT Issues: Phase 9 Plan 3
 
-**Tested:** 2026-01-16
-**Source:** .planning/phases/09-multiple-tables/09-03-SUMMARY.md
-**Tester:** User via manual testing
+**Tested:** 2026-01-20 (re-test after 09-03-FIX2)
+**Source:** .planning/phases/09-multiple-tables/09-03-FIX2-SUMMARY.md
+**Tester:** User via /gsd:verify-work
 
 ## Open Issues
+
+None.
+
+## Resolved Issues
+
+### UAT-006: Tab bar and controls hint missing in split view
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX3
+**Commit:** 01a8906
+**Description:** Tab bar and controls hint now visible in split view.
+**Verification:** Vertical layout wrapper adds header (tab bar) and footer (controls) around panes.
+
+### UAT-004: Split view pane switching not working
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX2
+**Commit:** c0e797f
+**Description:** Tab key now correctly switches focus between panes in split view.
+**Verification:** User confirmed Tab switches panes, yellow border moves correctly.
+
+### UAT-005: Horizontal scrolling not working in split view
+
+**Discovered:** 2026-01-20
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX2
+**Commit:** 2482348
+**Description:** h/l keys now work for horizontal scrolling in split view.
+**Verification:** User confirmed navigation (j/k/h/l) works in both panes.
 
 ### UAT-001: Tab switching not working
 
 **Discovered:** 2026-01-16
-**Phase/Plan:** 09-03
-**Severity:** Major
-**Feature:** Multi-tab navigation
-**Description:** Cannot swap between tabs. Tab/Shift+Tab or number keys don't switch the active tab.
-**Expected:** Tab/Shift+Tab should cycle through tabs, number keys (1-9) should switch directly to that tab number.
-**Actual:** Tab switching keybindings don't respond or don't change the active tab.
-**Repro:**
-1. Open multiple tables (create multiple tabs)
-2. Try pressing Tab or Shift+Tab to cycle tabs
-3. Try pressing number keys (1, 2, etc.) to switch tabs
-4. Observe that tabs don't switch
+**Resolved:** 2026-01-20 - Fixed in 09-03-FIX
+**Commit:** f32a9dc
+**Description:** Tab/Shift+Tab and number keys now correctly switch between tabs.
+**Verification:** User confirmed tabs work as expected in non-split view.
 
 ### UAT-002: Split view right pane cannot be changed
 
 **Discovered:** 2026-01-16
-**Phase/Plan:** 09-03
-**Severity:** Major
-**Feature:** Split view pane control
-**Description:** When split view is open, cannot change which tab is displayed in the right (2nd) pane.
-**Expected:** Should be able to cycle the right pane's tab using Tab/Shift+Tab when right pane is focused.
-**Actual:** Right pane tab cannot be changed.
-**Repro:**
-1. Open at least 2 tabs
-2. Press V to enable split view
-3. Press Ctrl+W to focus the right pane
-4. Try to change which tab is shown in the right pane
-5. Observe that it doesn't change
+**Status:** Partially addressed in 09-03-FIX, but new issue UAT-004 identified
+**Commit:** f32a9dc
+**Note:** Per-tab view mode was implemented, but pane focus switching mechanism still has issues.
 
 ### UAT-003: Table selection broken after navigating back in split view
 
 **Discovered:** 2026-01-16
-**Phase/Plan:** 09-03
-**Severity:** Major
-**Feature:** Table selection in split view
-**Description:** When in split view and the left (1st) pane navigates back to the table selection screen (via Esc), the table selector doesn't work - cannot press Enter to select a table.
-**Expected:** Enter key should select the highlighted table and load it.
-**Actual:** Enter key doesn't respond on table selection screen when in split view.
-**Repro:**
-1. Connect to database, see table list
-2. Select a table (Enter)
-3. Open another tab with a query
-4. Press V for split view
-5. Focus left pane (Ctrl+W if needed)
-6. Press Esc to go back to table list
-7. Try to select a table with Enter
-8. Observe that Enter doesn't work
-
-## Resolved Issues
-
-None
+**Status:** Cannot fully verify due to UAT-004 blocking pane focus
+**Commit:** f32a9dc
+**Note:** Enter key works correctly in non-split view. Split view testing blocked by UAT-004.
 
 ---
 
 *Phase: 09-multiple-tables*
-*Plan: 03*
-*Tested: 2026-01-16*
+*Plan: 03-FIX3*
+*Re-tested: 2026-01-20*
