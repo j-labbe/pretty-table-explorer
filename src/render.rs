@@ -6,12 +6,12 @@
 use std::cell::Cell as StdCell;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Row, Table, TableState},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
 };
 use crate::column::ColumnConfig;
 use crate::parser::TableData;
-use crate::state::PaneRenderData;
-use crate::workspace::{Tab, ViewMode};
+use crate::state::{AppMode, PaneRenderData};
+use crate::workspace::{Tab, ViewMode, Workspace};
 
 /// Calculate auto-sized column widths from table data (raw values, no overrides).
 /// Returns width for each column sized to fit the maximum content width + 1 for padding.
@@ -405,4 +405,81 @@ pub fn build_pane_title(
     let focus_indicator = if is_focused { "*" } else { "" };
 
     format!("{}{} {}{}", focus_indicator, pane.name, position, filter_info)
+}
+
+/// Build tab bar string for multi-tab display.
+/// Format: "1:name 2:name [3:active] 4:name | " with numbers matching keyboard shortcuts.
+pub fn build_tab_bar(workspace: &Workspace) -> String {
+    let tab_count = workspace.tab_count();
+    let is_split = workspace.split_active && tab_count > 1;
+    if tab_count > 1 {
+        let names: Vec<String> = workspace.tabs.iter().enumerate().map(|(i, t)| {
+            // Truncate long tab names to prevent title overflow
+            let name = if t.name.len() > 15 {
+                format!("{}...", &t.name[..12])
+            } else {
+                t.name.clone()
+            };
+            // Mark both active and split tabs in split mode
+            if is_split && i == workspace.split_idx && i != workspace.active_idx {
+                format!("<{}:{}>", i + 1, name)
+            } else if i == workspace.active_idx {
+                format!("[{}:{}]", i + 1, name)
+            } else {
+                format!("{}:{}", i + 1, name)
+            }
+        }).collect();
+        format!("{} | ", names.join(" "))
+    } else {
+        String::new()
+    }
+}
+
+/// Build context-appropriate controls hint string.
+pub fn build_controls_hint(
+    view_mode: ViewMode,
+    is_split: bool,
+    tab_count: usize,
+) -> String {
+    let split_controls = if is_split {
+        "Tab: switch pane, V: unsplit, "
+    } else if tab_count > 1 {
+        "V: split, "
+    } else {
+        ""
+    };
+    let tab_controls = if tab_count > 1 { "1-9: tab, W: close, " } else { "" };
+
+    match view_mode {
+        ViewMode::TableList => format!("{}{}Enter: select, /: filter, q: quit", split_controls, tab_controls),
+        ViewMode::TableData => format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, Esc: back, q: quit", split_controls, tab_controls),
+        ViewMode::PipeData => format!("{}{}+/-: width, H/S: hide/show, </>: move, E: export, 0: reset, q: quit", split_controls, tab_controls),
+    }
+}
+
+/// Render input bar for query/search/export modes.
+pub fn render_input_bar(frame: &mut Frame, area: Rect, mode: AppMode, input_buffer: &str) {
+    let (prefix, style) = match mode {
+        AppMode::QueryInput => (":", Style::default().fg(Color::Cyan)),
+        AppMode::SearchInput => ("/", Style::default().fg(Color::Yellow)),
+        AppMode::ExportFilename => ("Save as: ", Style::default().fg(Color::Green)),
+        AppMode::Normal | AppMode::ExportFormat => ("", Style::default()),
+    };
+
+    let input_text = format!("{}{}", prefix, input_buffer);
+    let input_widget = Paragraph::new(input_text)
+        .style(style)
+        .block(Block::default().borders(Borders::ALL));
+
+    frame.render_widget(input_widget, area);
+}
+
+/// Render export format selection prompt.
+pub fn render_format_prompt(frame: &mut Frame, area: Rect) {
+    let prompt_text = "Export format: [C]SV or [J]SON (Esc to cancel)";
+    let prompt_widget = Paragraph::new(prompt_text)
+        .style(Style::default().fg(Color::Green))
+        .block(Block::default().borders(Borders::ALL));
+
+    frame.render_widget(prompt_widget, area);
 }
