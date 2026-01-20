@@ -6,7 +6,7 @@
 use std::cell::Cell as StdCell;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
+    widgets::{Block, Borders, Cell, Row, Table, TableState},
 };
 use crate::column::ColumnConfig;
 use crate::parser::TableData;
