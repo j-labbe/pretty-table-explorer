@@ -9,7 +9,7 @@ use crate::parser::TableData;
 use crate::workspace::ViewMode;
 
 /// Application mode for handling different input states.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AppMode {
     Normal,         // Regular table navigation
     QueryInput,     // ':' pressed, entering SQL query

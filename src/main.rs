@@ -1,6 +1,7 @@
 mod column;
 mod db;
 mod export;
+mod handlers;
 mod parser;
 mod render;
 mod state;
@@ -12,10 +13,10 @@ use std::io::{self, Read};
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
-use column::ColumnConfig;
+use handlers::{handle_normal_mode, handle_query_input, handle_search_input, handle_export_format, handle_export_filename, KeyAction, WorkspaceOp};
 use parser::TableData;
 use render::{
-    build_pane_render_data, build_pane_title, render_table_pane, calculate_auto_widths,
+    build_pane_render_data, build_pane_title, render_table_pane,
     build_tab_bar, build_controls_hint, render_input_bar, render_format_prompt,
 };
 use state::{AppMode, PendingAction};
@@ -44,7 +45,7 @@ enum Commands {
 }
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -552,500 +553,117 @@ fn main() -> io::Result<()> {
                 // Pending action for deferred tab creation (to avoid borrow conflicts)
                 let mut pending_action = PendingAction::None;
 
-                // Get fresh mutable reference to focused tab for event handling
-                // In split mode, this respects focus_left; otherwise it's the active tab
-                let tab = workspace.focused_tab_mut().unwrap();
+                // Capture workspace state before borrowing tab (to avoid borrow conflicts)
+                let has_split = workspace.split_active;
+                let tab_count = workspace.tab_count();
 
-                match current_mode {
-                    AppMode::Normal => {
-                        match key.code {
-                            // Quit on 'q' or Ctrl+C
-                            KeyCode::Char('q') => break,
-                            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                break
-                            }
+                // Track workspace operation to execute after tab borrow ends
+                let mut workspace_op: Option<WorkspaceOp> = None;
 
-                            // Enter: Select table in TableList mode
-                            KeyCode::Enter => {
-                                if tab.view_mode == ViewMode::TableList {
-                                    if let Some(ref mut client) = db_client {
-                                        if let Some(selected) = tab.table_state.selected() {
-                                            // Get table name from selected row (first column)
-                                            // Recalculate display_rows for event handling
-                                            let filter_lower = tab.filter_text.to_lowercase();
-                                            let display_rows: Vec<&Vec<String>> = if tab.filter_text.is_empty() {
-                                                tab.data.rows.iter().collect()
-                                            } else {
-                                                tab.data.rows.iter()
-                                                    .filter(|row| row.iter().any(|cell| cell.to_lowercase().contains(&filter_lower)))
-                                                    .collect()
-                                            };
-                                            if let Some(row) = display_rows.get(selected) {
-                                                if let Some(tbl_name) = row.first() {
-                                                    let query = format!(
-                                                        "SELECT * FROM \"{}\" LIMIT 1000",
-                                                        tbl_name
-                                                    );
-                                                    match db::execute_query(client, &query) {
-                                                        Ok(data) => {
-                                                            if data.headers.is_empty()
-                                                                && data.rows.is_empty()
-                                                            {
-                                                                status_message = Some(
-                                                                    "Table is empty".to_string(),
-                                                                );
-                                                                status_message_time =
-                                                                    Some(Instant::now());
-                                                            } else {
-                                                                current_table_name =
-                                                                    Some(tbl_name.clone());
-                                                                // Queue tab creation (deferred to avoid borrow conflict)
-                                                                pending_action = PendingAction::CreateTab {
-                                                                    name: tbl_name.clone(),
-                                                                    data,
-                                                                    view_mode: ViewMode::TableData,
-                                                                };
-                                                            }
-                                                        }
-                                                        Err(e) => {
-                                                            status_message =
-                                                                Some(format!("Error: {}", e));
-                                                            status_message_time =
-                                                                Some(Instant::now());
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                // Scope for tab borrow - all handlers that need tab must be in this block
+                {
+                    // Get fresh mutable reference to focused tab for event handling
+                    // In split mode, this respects focus_left; otherwise it's the active tab
+                    let tab = workspace.focused_tab_mut().unwrap();
+
+                    match current_mode {
+                        AppMode::Normal => {
+                            match handle_normal_mode(
+                                &key,
+                                tab,
+                                &mut db_client,
+                                &table_list_cache,
+                                &mut current_table_name,
+                                displayed_row_count,
+                                has_split,
+                                tab_count,
+                            ) {
+                                KeyAction::Quit => break,
+                                KeyAction::StatusMessage(msg) => {
+                                    status_message = Some(msg);
+                                    status_message_time = Some(Instant::now());
                                 }
-                            }
-
-                            // Esc: Go back to table list from TableData mode
-                            KeyCode::Esc => {
-                                if tab.view_mode == ViewMode::TableData {
-                                    if let Some(ref cached) = table_list_cache {
-                                        tab.data = cached.clone();
-                                        tab.column_config = ColumnConfig::new(tab.data.headers.len());
-                                        tab.scroll_col_offset = 0;
-                                        tab.selected_visible_col = 0;
-                                        tab.table_state = TableState::default().with_selected(Some(0));
-                                        tab.filter_text.clear();
-                                        current_table_name = None;
-                                        tab.view_mode = ViewMode::TableList;
-                                    }
+                                KeyAction::CreateTab { name, data, view_mode } => {
+                                    pending_action = PendingAction::CreateTab { name, data, view_mode };
                                 }
-                            }
-
-                            // Enter query input mode (only in DB modes, not pipe)
-                            KeyCode::Char(':') => {
-                                if db_client.is_some() {
-                                    current_mode = AppMode::QueryInput;
+                                KeyAction::ModeChange(mode) => {
+                                    current_mode = mode;
                                     input_buffer.clear();
-                                } else {
-                                    status_message =
-                                        Some("Query mode requires --connect".to_string());
+                                }
+                                KeyAction::Workspace(op) => {
+                                    workspace_op = Some(op);
+                                }
+                                KeyAction::None => {}
+                            }
+                        }
+
+                        AppMode::QueryInput => {
+                            let (action, return_to_normal) = handle_query_input(
+                                &key,
+                                &mut input_buffer,
+                                &mut db_client,
+                            );
+                            if return_to_normal {
+                                current_mode = AppMode::Normal;
+                            }
+                            match action {
+                                KeyAction::StatusMessage(msg) => {
+                                    status_message = Some(msg);
                                     status_message_time = Some(Instant::now());
                                 }
-                            }
-
-                            // Enter search input mode
-                            KeyCode::Char('/') => {
-                                current_mode = AppMode::SearchInput;
-                                input_buffer.clear();
-                            }
-
-                            // Vertical navigation (bounded by displayed row count)
-                            KeyCode::Char('j') | KeyCode::Down => {
-                                if let Some(selected) = tab.table_state.selected() {
-                                    if selected + 1 < displayed_row_count {
-                                        tab.table_state.select(Some(selected + 1));
-                                    }
+                                KeyAction::CreateTab { name, data, view_mode } => {
+                                    pending_action = PendingAction::CreateTab { name, data, view_mode };
                                 }
+                                _ => {}
                             }
-                            KeyCode::Char('k') | KeyCode::Up => {
-                                if let Some(selected) = tab.table_state.selected() {
-                                    if selected > 0 {
-                                        tab.table_state.select(Some(selected - 1));
-                                    }
-                                }
-                            }
-
-                            // Jump to first/last (bounded by displayed row count)
-                            KeyCode::Char('g') | KeyCode::Home => tab.table_state.select(Some(0)),
-                            KeyCode::Char('G') | KeyCode::End => {
-                                if displayed_row_count > 0 {
-                                    tab.table_state.select(Some(displayed_row_count - 1));
-                                }
-                            }
-
-                            // Horizontal column navigation with scrolling
-                            KeyCode::Char('h') | KeyCode::Left => {
-                                if tab.selected_visible_col > 0 {
-                                    tab.selected_visible_col -= 1;
-                                    // Scroll left if selected column is before scroll window
-                                    if tab.selected_visible_col < tab.scroll_col_offset {
-                                        tab.scroll_col_offset = tab.selected_visible_col;
-                                    }
-                                }
-                            }
-                            KeyCode::Char('l') | KeyCode::Right => {
-                                let visible_cols = tab.column_config.visible_indices();
-                                if tab.selected_visible_col + 1 < visible_cols.len() {
-                                    tab.selected_visible_col += 1;
-                                    // Scroll right will be handled in render loop when needed
-                                }
-                            }
-
-                            // Page navigation (half-page like vim, bounded by displayed count)
-                            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                if let Some(selected) = tab.table_state.selected() {
-                                    let new_pos = selected.saturating_sub(10);
-                                    tab.table_state.select(Some(new_pos));
-                                }
-                            }
-                            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                if let Some(selected) = tab.table_state.selected() {
-                                    let new_pos =
-                                        (selected + 10).min(displayed_row_count.saturating_sub(1));
-                                    tab.table_state.select(Some(new_pos));
-                                }
-                            }
-                            // Also support Page Up/Page Down
-                            KeyCode::PageUp => {
-                                if let Some(selected) = tab.table_state.selected() {
-                                    let new_pos = selected.saturating_sub(10);
-                                    tab.table_state.select(Some(new_pos));
-                                }
-                            }
-                            KeyCode::PageDown => {
-                                if let Some(selected) = tab.table_state.selected() {
-                                    let new_pos =
-                                        (selected + 10).min(displayed_row_count.saturating_sub(1));
-                                    tab.table_state.select(Some(new_pos));
-                                }
-                            }
-
-                            // Column width adjustment (+ and - keys)
-                            KeyCode::Char('+') | KeyCode::Char('=') => {
-                                let visible = tab.column_config.visible_indices();
-                                if tab.selected_visible_col < visible.len() {
-                                    let data_idx = visible[tab.selected_visible_col];
-                                    let auto_widths = calculate_auto_widths(&tab.data);
-                                    let auto_width = auto_widths.get(data_idx).copied().unwrap_or(10);
-                                    tab.column_config.adjust_width(data_idx, 2, auto_width);
-                                }
-                            }
-                            KeyCode::Char('-') | KeyCode::Char('_') => {
-                                let visible = tab.column_config.visible_indices();
-                                if tab.selected_visible_col < visible.len() {
-                                    let data_idx = visible[tab.selected_visible_col];
-                                    let auto_widths = calculate_auto_widths(&tab.data);
-                                    let auto_width = auto_widths.get(data_idx).copied().unwrap_or(10);
-                                    tab.column_config.adjust_width(data_idx, -2, auto_width);
-                                }
-                            }
-                            // Reset column widths to auto (also shows hidden columns and scroll)
-                            KeyCode::Char('0') => {
-                                tab.column_config.reset();
-                                tab.scroll_col_offset = 0;
-                                tab.selected_visible_col = 0;
-                            }
-
-                            // Hide selected column (H key, uppercase to avoid conflict with h/left)
-                            KeyCode::Char('H') => {
-                                // Don't allow hiding if only one column visible
-                                if tab.column_config.visible_count() > 1 {
-                                    let visible = tab.column_config.visible_indices();
-                                    if tab.selected_visible_col < visible.len() {
-                                        let data_idx = visible[tab.selected_visible_col];
-                                        tab.column_config.hide(data_idx);
-                                        // If we hid the last visible column, select previous
-                                        let new_visible = tab.column_config.visible_indices();
-                                        if tab.selected_visible_col >= new_visible.len() && tab.selected_visible_col > 0 {
-                                            tab.selected_visible_col -= 1;
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Show all hidden columns (S key)
-                            KeyCode::Char('S') => {
-                                tab.column_config.show_all();
-                            }
-
-                            // Move column left (<)
-                            KeyCode::Char('<') | KeyCode::Char(',') => {
-                                let visible = tab.column_config.visible_indices();
-                                if tab.selected_visible_col > 0 && tab.selected_visible_col < visible.len() {
-                                    // Swap this column with previous in display order
-                                    let this_idx = visible[tab.selected_visible_col];
-                                    let prev_idx = visible[tab.selected_visible_col - 1];
-                                    let this_pos = tab.column_config.display_position(this_idx).unwrap();
-                                    let prev_pos = tab.column_config.display_position(prev_idx).unwrap();
-                                    // Direct swap in display_order vec
-                                    tab.column_config.swap_display(this_pos, prev_pos);
-                                    // Selection follows the moved column
-                                    tab.selected_visible_col -= 1;
-                                    if tab.selected_visible_col < tab.scroll_col_offset {
-                                        tab.scroll_col_offset = tab.selected_visible_col;
-                                    }
-                                }
-                            }
-
-                            // Move column right (>)
-                            KeyCode::Char('>') | KeyCode::Char('.') => {
-                                let visible = tab.column_config.visible_indices();
-                                if tab.selected_visible_col + 1 < visible.len() {
-                                    // Swap this column with next in display order
-                                    let this_idx = visible[tab.selected_visible_col];
-                                    let next_idx = visible[tab.selected_visible_col + 1];
-                                    let this_pos = tab.column_config.display_position(this_idx).unwrap();
-                                    let next_pos = tab.column_config.display_position(next_idx).unwrap();
-                                    // Direct swap in display_order vec
-                                    tab.column_config.swap_display(this_pos, next_pos);
-                                    // Selection follows the moved column
-                                    tab.selected_visible_col += 1;
-                                }
-                            }
-
-                            // Export data (E key)
-                            KeyCode::Char('E') => {
-                                // Export available in TableData and PipeData modes
-                                if tab.view_mode == ViewMode::TableData || tab.view_mode == ViewMode::PipeData {
-                                    current_mode = AppMode::ExportFormat;
-                                }
-                            }
-
-                            // Tab navigation: toggle focus in split mode, cycle tabs otherwise
-                            KeyCode::Tab => {
-                                if workspace.split_active {
-                                    // In split view: Tab toggles focus between panes
-                                    workspace.toggle_focus();
-                                } else if workspace.tab_count() > 1 {
-                                    workspace.next_tab();
-                                }
-                            }
-                            KeyCode::BackTab => {
-                                // Shift+Tab: same as Tab (toggle focus in split, prev tab otherwise)
-                                if workspace.split_active {
-                                    workspace.toggle_focus();
-                                } else if workspace.tab_count() > 1 {
-                                    workspace.prev_tab();
-                                }
-                            }
-
-                            // Direct tab selection with number keys 1-9
-                            KeyCode::Char(c @ '1'..='9') => {
-                                let idx = (c as usize) - ('1' as usize);
-                                if idx < workspace.tab_count() {
-                                    workspace.switch_to(idx);
-                                }
-                            }
-
-                            // Close focused tab with W (uppercase)
-                            KeyCode::Char('W') => {
-                                if workspace.tab_count() > 1 {
-                                    let idx = workspace.focused_idx();
-                                    workspace.close_tab(idx);
-                                }
-                            }
-
-                            // Toggle split view with V (uppercase)
-                            KeyCode::Char('V') => {
-                                workspace.toggle_split();
-                            }
-
-                            // Switch focus between panes with Ctrl+W or F6
-                            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                workspace.toggle_focus();
-                            }
-                            KeyCode::F(6) => {
-                                workspace.toggle_focus();
-                            }
-
-                            _ => {}
                         }
-                    }
 
-                    AppMode::QueryInput => {
-                        match key.code {
-                            // Cancel and return to normal mode
-                            KeyCode::Esc => {
+                        AppMode::SearchInput => {
+                            if handle_search_input(&key, &mut input_buffer, tab) {
                                 current_mode = AppMode::Normal;
-                                input_buffer.clear();
                             }
-
-                            // Execute query and return to normal mode
-                            KeyCode::Enter => {
-                                if let Some(ref mut client) = db_client {
-                                    // Execute query via database client
-                                    let query_str = input_buffer.trim().to_string();
-                                    if !query_str.is_empty() {
-                                        match db::execute_query(client, &query_str) {
-                                            Ok(data) => {
-                                                if data.headers.is_empty() && data.rows.is_empty() {
-                                                    status_message = Some(
-                                                        "Query returned no results".to_string(),
-                                                    );
-                                                    status_message_time = Some(Instant::now());
-                                                } else {
-                                                    // Generate tab name from query (truncate if long)
-                                                    let tab_name = {
-                                                        let q = query_str.trim();
-                                                        if q.len() > 20 {
-                                                            format!("{}...", &q[..17])
-                                                        } else {
-                                                            q.to_string()
-                                                        }
-                                                    };
-
-                                                    // Queue tab creation (deferred to avoid borrow conflict)
-                                                    pending_action = PendingAction::CreateTab {
-                                                        name: tab_name,
-                                                        data,
-                                                        view_mode: ViewMode::TableData,
-                                                    };
-                                                }
-                                            }
-                                            Err(e) => {
-                                                status_message = Some(format!("Error: {}", e));
-                                                status_message_time = Some(Instant::now());
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // Not in database mode
-                                    status_message =
-                                        Some("Query mode requires --connect".to_string());
-                                    status_message_time = Some(Instant::now());
-                                }
-                                current_mode = AppMode::Normal;
-                                input_buffer.clear();
-                            }
-
-                            // Text input
-                            KeyCode::Char(c) => {
-                                input_buffer.push(c);
-                            }
-
-                            // Backspace
-                            KeyCode::Backspace => {
-                                input_buffer.pop();
-                            }
-
-                            _ => {}
                         }
-                    }
 
-                    AppMode::SearchInput => {
-                        match key.code {
-                            // Cancel and return to normal mode
-                            KeyCode::Esc => {
-                                current_mode = AppMode::Normal;
-                                input_buffer.clear();
+                        AppMode::ExportFormat => {
+                            if let Some(new_mode) = handle_export_format(
+                                &key,
+                                &mut export_format,
+                                &mut input_buffer,
+                            ) {
+                                current_mode = new_mode;
                             }
-
-                            // Apply filter and return to normal mode
-                            KeyCode::Enter => {
-                                // Set or clear filter based on input
-                                tab.filter_text = input_buffer.trim().to_string();
-                                // Reset selection to 0 when filter changes
-                                tab.table_state = TableState::default().with_selected(Some(0));
-                                current_mode = AppMode::Normal;
-                                input_buffer.clear();
-                            }
-
-                            // Text input
-                            KeyCode::Char(c) => {
-                                input_buffer.push(c);
-                            }
-
-                            // Backspace
-                            KeyCode::Backspace => {
-                                input_buffer.pop();
-                            }
-
-                            _ => {}
                         }
-                    }
 
-                    AppMode::ExportFormat => {
-                        match key.code {
-                            // Cancel and return to normal mode
-                            KeyCode::Esc => {
+                        AppMode::ExportFilename => {
+                            let (msg, done) = handle_export_filename(
+                                &key,
+                                &mut input_buffer,
+                                export_format,
+                                tab,
+                            );
+                            if let Some(m) = msg {
+                                status_message = Some(m);
+                                status_message_time = Some(Instant::now());
+                            }
+                            if done {
                                 current_mode = AppMode::Normal;
-                            }
-
-                            // Select CSV format
-                            KeyCode::Char('c') | KeyCode::Char('C') => {
-                                export_format = Some(export::ExportFormat::Csv);
-                                input_buffer = "export.csv".to_string();
-                                current_mode = AppMode::ExportFilename;
-                            }
-
-                            // Select JSON format
-                            KeyCode::Char('j') | KeyCode::Char('J') => {
-                                export_format = Some(export::ExportFormat::Json);
-                                input_buffer = "export.json".to_string();
-                                current_mode = AppMode::ExportFilename;
-                            }
-
-                            _ => {}
-                        }
-                    }
-
-                    AppMode::ExportFilename => {
-                        match key.code {
-                            // Cancel and return to normal mode
-                            KeyCode::Esc => {
-                                current_mode = AppMode::Normal;
-                                input_buffer.clear();
                                 export_format = None;
                             }
+                        }
+                    }
+                }
 
-                            // Perform export
-                            KeyCode::Enter => {
-                                let filename = input_buffer.trim().to_string();
-                                if !filename.is_empty() {
-                                    if let Some(fmt) = export_format {
-                                        let visible_cols = tab.column_config.visible_indices();
-                                        match export::export_table(&tab.data, &visible_cols, fmt) {
-                                            Ok(content) => {
-                                                match export::save_to_file(&content, &filename) {
-                                                    Ok(()) => {
-                                                        status_message = Some(format!("Exported to {}", filename));
-                                                        status_message_time = Some(Instant::now());
-                                                    }
-                                                    Err(e) => {
-                                                        status_message = Some(e);
-                                                        status_message_time = Some(Instant::now());
-                                                    }
-                                                }
-                                            }
-                                            Err(e) => {
-                                                status_message = Some(e);
-                                                status_message_time = Some(Instant::now());
-                                            }
-                                        }
-                                    }
-                                }
-                                current_mode = AppMode::Normal;
-                                input_buffer.clear();
-                                export_format = None;
-                            }
-
-                            // Text input
-                            KeyCode::Char(c) => {
-                                input_buffer.push(c);
-                            }
-
-                            // Backspace
-                            KeyCode::Backspace => {
-                                input_buffer.pop();
-                            }
-
-                            _ => {}
+                // Execute workspace operations outside tab borrow scope
+                if let Some(op) = workspace_op {
+                    match op {
+                        WorkspaceOp::ToggleSplit => workspace.toggle_split(),
+                        WorkspaceOp::ToggleFocus => workspace.toggle_focus(),
+                        WorkspaceOp::NextTab => workspace.next_tab(),
+                        WorkspaceOp::PrevTab => workspace.prev_tab(),
+                        WorkspaceOp::SwitchTo(idx) => workspace.switch_to(idx),
+                        WorkspaceOp::CloseTab => {
+                            let idx = workspace.focused_idx();
+                            workspace.close_tab(idx);
                         }
                     }
                 }
