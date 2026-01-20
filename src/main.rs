@@ -851,11 +851,30 @@ fn main() -> io::Result<()> {
             let tab_controls = if tab_count > 1 { "1-9: tab, W: close, " } else { "" };
 
             if is_split {
-                // Split view: render two panes side by side
+                // Split view: vertical layout with tab bar, panes, and controls
+                let split_layout = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([
+                        Constraint::Length(1),  // Tab bar
+                        Constraint::Min(3),     // Panes
+                        Constraint::Length(1),  // Controls
+                    ])
+                    .split(table_area);
+
+                let tab_bar_area = split_layout[0];
+                let panes_area = split_layout[1];
+                let controls_area = split_layout[2];
+
+                // Render tab bar at top
+                let tab_bar_widget = Paragraph::new(tab_bar.clone())
+                    .style(Style::default().fg(Color::Cyan));
+                frame.render_widget(tab_bar_widget, tab_bar_area);
+
+                // Split panes horizontally
                 let pane_chunks = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                    .split(table_area);
+                    .split(panes_area);
 
                 // Render left pane (active tab)
                 if let Some(ref pane_data) = left_pane_data {
@@ -895,15 +914,15 @@ fn main() -> io::Result<()> {
                     );
                 }
 
-                // Render controls hint bar at top of table area
-                // (For split view, we show a simpler global title above both panes)
+                // Build and render controls hint at bottom
                 let controls: String = match current_view {
                     ViewMode::TableList => format!("{}{}Enter: select, /: filter, q: quit", split_controls, tab_controls),
                     ViewMode::TableData => format!("{}{}+/-: width, H/S: hide/show, E: export, 0: reset, Esc: back, q: quit", split_controls, tab_controls),
                     ViewMode::PipeData => format!("{}{}+/-: width, H/S: hide/show, E: export, 0: reset, q: quit", split_controls, tab_controls),
                 };
-                // Show tab bar and status in the title (via frame title - not implemented, info in pane titles)
-                let _ = (tab_bar.clone(), status_info.clone(), controls);
+                let controls_widget = Paragraph::new(format!("{}{}", status_info, controls))
+                    .style(Style::default().fg(Color::DarkGray));
+                frame.render_widget(controls_widget, controls_area);
             } else {
                 // Single pane mode
                 if let Some(ref pane_data) = left_pane_data {
