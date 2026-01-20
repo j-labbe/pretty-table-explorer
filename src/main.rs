@@ -2,6 +2,7 @@ mod column;
 mod db;
 mod export;
 mod parser;
+mod state;
 mod update;
 mod workspace;
 
@@ -12,6 +13,7 @@ use std::time::{Duration, Instant};
 use clap::{Parser, Subcommand};
 use column::ColumnConfig;
 use parser::TableData;
+use state::{AppMode, PendingAction, PaneRenderData};
 use workspace::{ViewMode, Workspace};
 
 /// Interactive terminal table viewer for PostgreSQL
@@ -45,54 +47,6 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
 };
-
-/// Application mode for handling different input states.
-#[derive(Clone, Copy, PartialEq)]
-enum AppMode {
-    Normal,         // Regular table navigation
-    QueryInput,     // ':' pressed, entering SQL query
-    SearchInput,    // '/' pressed, entering search filter
-    ExportFormat,   // 'E' pressed, selecting export format (CSV/JSON)
-    ExportFilename, // Format selected, entering filename
-}
-
-
-/// Pending action to be executed after dropping mutable tab reference.
-/// Used to avoid borrow conflicts when creating new tabs.
-enum PendingAction {
-    None,
-    CreateTab { name: String, data: TableData, view_mode: ViewMode },
-}
-
-/// Data needed to render a single table pane.
-struct PaneRenderData {
-    /// Tab name
-    name: String,
-    /// Filtered display rows (copies for render closure)
-    display_rows: Vec<Vec<String>>,
-    /// Headers
-    headers: Vec<String>,
-    /// Total rows (before filter)
-    total_rows: usize,
-    /// Displayed row count (after filter)
-    displayed_row_count: usize,
-    /// Visible column indices
-    visible_cols: Vec<usize>,
-    /// Column widths
-    widths: Vec<Constraint>,
-    /// Filter text
-    filter_text: String,
-    /// Scroll column offset
-    scroll_col_offset: usize,
-    /// Selected visible column
-    selected_visible_col: usize,
-    /// Visible column count
-    visible_count: usize,
-    /// Hidden column count
-    hidden_count: usize,
-    /// Selected row
-    selected_row: Option<usize>,
-}
 
 /// Initialize the terminal for TUI rendering.
 /// Enables raw mode, enters alternate screen, and creates a Terminal instance.
