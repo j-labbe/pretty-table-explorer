@@ -9,12 +9,14 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 - ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-01-14)
 - ✅ **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
 - ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-16)
+- ✅ **v1.2.1 Patch** — Phase 9 FIX plans (shipped 2026-01-20)
 
 ## Completed Milestones
 
 - [v1.0 MVP](milestones/v1.0-ROADMAP.md) (Phases 1-4) — SHIPPED 2026-01-14
 - [v1.1 Distribution](milestones/v1.1-ROADMAP.md) (Phases 5-6) — SHIPPED 2026-01-14
 - [v1.2 Advanced Viewing](milestones/v1.2-ROADMAP.md) (Phases 7-10) — SHIPPED 2026-01-16
+- [v1.2.1 Patch](milestones/v1.2.1-ROADMAP.md) (Phase 9 FIX) — SHIPPED 2026-01-20
 
 <details>
 <summary> v1.0 MVP (Phases 1-4) — SHIPPED 2026-01-14</summary>
@@ -41,6 +43,18 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 - [x] Phase 8: Data Export (1/1 plan) — completed 2026-01-15
 - [x] Phase 9: Multiple Tables (3/3 plans) — completed 2026-01-15
 - [x] Phase 10: Scroll Indicators (1/1 plan + 3 FIX) — completed 2026-01-16
+
+</details>
+
+<details>
+<summary> v1.2.1 Patch (Phase 9 FIX) — SHIPPED 2026-01-20</summary>
+
+- [x] 09-03-FIX: Per-tab view mode migration — completed 2026-01-20
+- [x] 09-03-FIX2: Split view pane switching and scrolling — completed 2026-01-20
+- [x] 09-03-FIX3: Split view UI fixes (tab bar, controls) — completed 2026-01-20
+- [x] 09-03-FIX4: Split view pane focus for Enter key — completed 2026-01-20
+- [x] 09-03-FIX5: Tab cycling and pane duplication fixes — completed 2026-01-20
+- [x] 09-03-FIX6: Tab key simplification — completed 2026-01-20
 
 </details>
 

@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-16)
+See: .planning/PROJECT.md (updated 2026-01-20)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** Post-v1.2 bug fixes
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 9 of 10 (Multiple Tables - FIX6)
-Plan: 09-03-FIX6 complete
-Status: UAT issues fixed (Tab key simplified)
-Last activity: 2026-01-20 — Completed 09-03-FIX6 (Tab key simplification)
+Phase: 10 of 10 (all complete)
+Plan: All plans complete
+Status: v1.2.1 shipped
+Last activity: 2026-01-20 — Completed v1.2.1 milestone (split view bug fixes)
 
-Progress: ████████████████ 100% (v1.2 + fixes)
+Progress: ████████████████ 100% (v1.2.1 shipped)
 
 ## Milestone Status
 
@@ -27,6 +27,9 @@ Progress: ████████████████ 100% (v1.2 + fixes)
 - ✅ v1.2 Advanced Viewing — shipped 2026-01-16
   - Phases 7-10 complete (9 plans + 7 FIX plans)
   - See: .planning/milestones/v1.2-ROADMAP.md
+- ✅ v1.2.1 Patch — shipped 2026-01-20
+  - Phase 9 FIX plans complete (6 FIX plans)
+  - See: .planning/milestones/v1.2.1-ROADMAP.md
 
 ## Performance Metrics
 
@@ -78,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed 09-03-FIX6 (Tab key simplification)
+Stopped at: Completed v1.2.1 milestone
 Resume file: None

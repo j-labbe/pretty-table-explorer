@@ -1,5 +1,35 @@
 # Project Milestones: Pretty Table Explorer
 
+## v1.2.1 Patch (Shipped: 2026-01-20)
+
+**Delivered:** Post-release bug fixes for split view multi-tab functionality.
+
+**Phases completed:** 9 (6 FIX plans for split view UAT issues)
+
+**Key accomplishments:**
+
+- Per-tab view mode: migrated view_mode from global to per-tab state
+- Split view Tab key switches pane focus correctly
+- Horizontal scrolling works in both split view panes
+- Tab bar and controls hint visible in split view
+- Enter key opens tables in the focused pane (left or right)
+- Tab closing no longer duplicates pane content
+- Simplified Tab key to only toggle focus in split view
+
+**Stats:**
+
+- 16 files modified
+- 8 fix commits, 6 FIX plans
+- 4 days (2026-01-16 → 2026-01-20)
+
+**Git range:** `fix(09-03-FIX)` → `fix(09-03-FIX6)`
+
+**UAT issues resolved:** 11 total (UAT-001 through UAT-011)
+
+**What's next:** TBD - consider new features or v2.0 planning
+
+---
+
 ## v1.2 Advanced Viewing (Shipped: 2026-01-16)
 
 **Delivered:** Enhanced table interaction with column controls, data export, multi-tab workspaces, split view, and scroll indicators.

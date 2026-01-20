@@ -81,4 +81,4 @@ Advanced viewing: column controls (resize/hide/reorder), multi-tab workspaces wi
 Distribution: GitHub releases for 4 platforms, install script, self-update command.
 
 ---
-*Last updated: 2026-01-16 after v1.2 milestone*
+*Last updated: 2026-01-20 after v1.2.1 milestone*
