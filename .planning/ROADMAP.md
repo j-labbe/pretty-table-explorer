@@ -10,7 +10,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 - ✅ **v1.1 Distribution** — Phases 5-6 (shipped 2026-01-14)
 - ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-16)
 - ✅ **v1.2.1 Patch** — Phase 9 FIX plans (shipped 2026-01-20)
-- 🚧 **v1.3 Code Quality** — Phases 11-13 (in progress)
+- ✅ **v1.3 Code Quality** — Phases 11-13 (shipped 2026-01-20)
 
 ## Completed Milestones
 
@@ -59,7 +59,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
-### 🚧 v1.3 Code Quality (In Progress)
+### ✅ v1.3 Code Quality (Complete)
 
 **Milestone Goal:** Refactor monolithic main.rs into clean, layered architecture for better maintainability
 
@@ -84,16 +84,16 @@ Plans:
 - [x] 12-01: Render Module Extraction — completed 2026-01-20
 - [x] 12-02: Main Loop UI Extraction — completed 2026-01-20
 
-#### Phase 13: Handlers & Cleanup
+#### Phase 13: Handlers & Cleanup — ✅ Complete
 
 **Goal**: Extract input handlers, commands, utils; remove dead code; fix clippy warnings; final polish
 **Depends on**: Phase 12
 **Research**: Unlikely (internal patterns, refactoring)
-**Plans**: 2
+**Plans**: 2/2 complete
 
 Plans:
-- [ ] 13-01: Handler Module Extraction — extract keyboard handlers from main.rs
-- [ ] 13-02: Clippy Fixes and Dead Code Removal — fix warnings, remove unused code
+- [x] 13-01: Handler Module Extraction — completed 2026-01-20
+- [x] 13-02: Clippy Fixes and Dead Code Removal — completed 2026-01-20
 
 ## Progress
 
@@ -111,7 +111,7 @@ Plans:
 | 10. Scroll Indicators | v1.2 | 1/1 | Complete | 2026-01-15 |
 | 11. Core Types Extraction | v1.3 | 1/1 | Complete | 2026-01-20 |
 | 12. UI Layer Extraction | v1.3 | 2/2 | Complete | 2026-01-20 |
-| 13. Handlers & Cleanup | v1.3 | 0/2 | Planned | - |
+| 13. Handlers & Cleanup | v1.3 | 2/2 | Complete | 2026-01-20 |
 
 ## Domain Expertise
 
