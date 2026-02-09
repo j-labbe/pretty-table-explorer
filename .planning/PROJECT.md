@@ -34,7 +34,16 @@ Clean table rendering with proper column alignment — no wrapping, no spacing i
 
 ### Active
 
-(None — considering next milestone scope)
+## Current Milestone: v1.4 Performance
+
+**Goal:** Optimize PTE to handle million-row datasets with fast loading and smooth scrolling.
+
+**Target features:**
+- Streaming/progressive loading (display data as it arrives from pipe)
+- Optimized psql output parsing (reduce allocations, process in chunks)
+- Virtualized rendering (only visible rows touch the render path)
+- Memory-efficient row storage for large datasets
+- Fast search/filter over large datasets
 
 ### Out of Scope
 
@@ -82,6 +91,7 @@ Dual-mode operation: stdin pipe for psql output, --connect for direct PostgreSQL
 Advanced viewing: column controls (resize/hide/reorder), multi-tab workspaces with split view, CSV/JSON export, scroll indicators.
 Distribution: GitHub releases for 4 platforms, install script, self-update command.
 Architecture: Clean module separation (main.rs 691 lines, handlers.rs 607 lines, render.rs 481 lines, workspace.rs 315 lines).
+Performance target: 1.8M row datasets via piped psql — currently slow to load and laggy to scroll.
 
 ---
-*Last updated: 2026-01-20 after v1.3 milestone*
+*Last updated: 2026-02-09 after v1.4 milestone started*
