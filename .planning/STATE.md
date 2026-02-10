@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** Phase 16 - Memory Optimization
+**Current focus:** Phase 17 - Virtualized Rendering
 
 ## Current Position
 
-Phase: 16 of 17 (Memory Optimization)
+Phase: 17 of 17 (Virtualized Rendering)
 Plan: 2 of 2 complete
 Status: Complete
-Last activity: 2026-02-10 — Completed plan 16-02 (Memory Tracking Display)
+Last activity: 2026-02-10 — Completed plan 17-02 (Scroll Boundary Tests)
 
-Progress: [████████████████░] 94% (16 of 17 phases complete)
+Progress: [█████████████████] 100% (17 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34 + 10 FIX
+- Total plans completed: 36 + 10 FIX
 - Average duration: ~5.2 min
-- Total execution time: ~231 min
+- Total execution time: ~245 min
 
 **By Phase:**
 
@@ -43,12 +43,14 @@ Progress: [████████████████░] 94% (16 of 17 ph
 | 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
 | 15. Streaming Load | 2 | 77 min | 38.5 min |
 | 16. Memory Optimization | 2 | 7 min | 3.5 min |
+| 17. Virtualized Rendering | 2 | 7 min | 3.5 min |
 
 **Recent Trend:**
-- v1.4 milestone: Phase 16 complete (7 min total - memory optimization with monitoring)
-- String interning provides 50-80% memory savings for repetitive datasets
-- Memory tracking in status bar validates optimization results
-- Trend: Well-tested migrations execute quickly
+- v1.4 milestone: Phase 17 complete (7 min total - scroll boundary tests verify viewport safety)
+- 30 FPS scrolling achieved through frame-rate-controlled event loop
+- Viewport windowing handles all boundary conditions correctly (11 comprehensive tests)
+- Defensive boundary fix prevents slice panics in filtered viewport path
+- Trend: Proactive testing and deviation handling yields robust implementations
 
 *Updated after each plan completion*
 
@@ -81,6 +83,10 @@ Recent decisions affecting current work:
 - Intern on main thread: Rodeo not Send/Sync, streaming sends Vec<Vec<String>> through channel (16-01)
 - Resolve at boundaries: Symbol resolution at display/export boundaries for clean separation (16-01)
 - Memory tracking: sysinfo displays RSS in MB in status bar, refreshed every 30 frames for zero performance impact (16-02)
+- Frame-rate control: 30 FPS target (33ms frame time) with needs_redraw flag to avoid idle CPU waste (17-01)
+- Conditional rendering: Render only when needs_redraw flag set or frame time elapsed (17-01)
+- Defensive boundary clamping: start.min(end) in filtered viewport path prevents slice panics when selected > filtered count (17-02)
+- Scroll boundary tests: 11 integration tests verify viewport windowing correctness at all positions (17-02)
 
 ### Pending Todos
 
@@ -102,10 +108,11 @@ None yet.
 - ✅ COMPLETE (16-02: memory tracking in status bar shows RSS, validates interning savings)
 
 **Phase 17 (Virtualized Rendering):**
-- Off-by-one errors common in virtualized scrolling, needs boundary testing
+- ~~Off-by-one errors common in virtualized scrolling, needs boundary testing~~ ✅ RESOLVED (17-02: 11 comprehensive boundary tests, all pass)
+- ✅ COMPLETE (17-01: 30 FPS frame-rate-controlled event loop, 17-02: scroll boundary tests + defensive fix)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 16-02-PLAN.md (Memory Tracking Display) - Phase 16 complete
-Resume file: .planning/phases/16-memory-optimization/16-02-SUMMARY.md
+Stopped at: Completed plan 17-02-PLAN.md (Scroll Boundary Tests) - Phase 17 complete, ALL PHASES COMPLETE
+Resume file: .planning/phases/17-virtualized-rendering/17-02-SUMMARY.md

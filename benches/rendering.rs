@@ -63,9 +63,76 @@ fn bench_build_render_data(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark viewport-windowed render data at different dataset sizes.
+/// Proves render time is O(viewport_size), not O(dataset_size).
+/// All tests use viewport_height=50 (typical terminal height).
+fn bench_viewport_render_scaling(c: &mut Criterion) {
+    let mut group = c.benchmark_group("viewport_render_scaling");
+    let viewport_height: usize = 50; // Typical terminal height
+
+    // Test with drastically different dataset sizes
+    // If viewport windowing works, all should take similar time
+    for num_rows in [1_000, 10_000, 100_000, 500_000] {
+        let data = create_test_table(num_rows, 10);
+        let mut tab = Tab::new("benchmark".to_string(), data, ViewMode::PipeData);
+        // Initialize cached widths (as the app would in practice)
+        tab.update_cached_widths();
+
+        // Position cursor at middle of dataset
+        tab.table_state.select(Some(num_rows / 2));
+
+        group.bench_with_input(
+            BenchmarkId::new("rows", num_rows),
+            &tab,
+            |b, tab| {
+                b.iter(|| {
+                    let render_data = build_pane_render_data(black_box(tab), viewport_height);
+                    black_box(render_data)
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark render data at different scroll positions (top, middle, bottom).
+/// Verifies no performance degradation at dataset boundaries.
+fn bench_viewport_render_at_boundaries(c: &mut Criterion) {
+    let mut group = c.benchmark_group("viewport_render_boundaries");
+    let viewport_height: usize = 50;
+    let num_rows: usize = 100_000;
+    let data = create_test_table(num_rows, 10);
+
+    for (label, position) in [
+        ("top", 0usize),
+        ("middle", num_rows / 2),
+        ("bottom", num_rows - 1),
+    ] {
+        let mut tab = Tab::new("benchmark".to_string(), data.clone(), ViewMode::PipeData);
+        tab.update_cached_widths();
+        tab.table_state.select(Some(position));
+
+        group.bench_with_input(
+            BenchmarkId::new("position", label),
+            &tab,
+            |b, tab| {
+                b.iter(|| {
+                    let render_data = build_pane_render_data(black_box(tab), viewport_height);
+                    black_box(render_data)
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_column_width_calculation,
-    bench_build_render_data
+    bench_build_render_data,
+    bench_viewport_render_scaling,
+    bench_viewport_render_at_boundaries
 );
 criterion_main!(benches);
