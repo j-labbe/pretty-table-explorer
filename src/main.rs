@@ -1,9 +1,9 @@
 use std::cell::Cell as StdCell;
-use std::io::{self, Read};
+use std::io;
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
-use pretty_table_explorer::{db, export, handlers, parser, render, state, update, workspace};
+use pretty_table_explorer::{db, export, handlers, parser, render, state, streaming, update, workspace};
 use handlers::{
     handle_export_filename, handle_export_format, handle_normal_mode, handle_query_input,
     handle_search_input, KeyAction, WorkspaceOp,
@@ -133,8 +133,8 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
-    // Get table data, database client, and initial view mode from either database or stdin
-    let (table_data, mut db_client, initial_view_mode) =
+    // Get table data, database client, initial view mode, and optional streaming loader from either database or stdin
+    let (table_data, mut db_client, initial_view_mode, mut streaming_loader) =
         if let Some((conn_string, query, has_custom_query)) = db_config {
             // Direct database connection mode
             match db::connect(&conn_string) {
@@ -150,7 +150,7 @@ fn main() -> io::Result<()> {
                         } else {
                             ViewMode::TableList
                         };
-                        (data, Some(client), mode)
+                        (data, Some(client), mode, None)
                     }
                     Err(e) => {
                         eprintln!("Error: Query failed: {}", e);
@@ -180,15 +180,24 @@ fn main() -> io::Result<()> {
                 print_usage();
             }
 
-            // Read and parse stdin
-            let mut input = String::new();
-            io::stdin().read_to_string(&mut input)?;
-
-            match parser::parse_psql(&input) {
-                Some(data) => (data, None, ViewMode::PipeData),
-                None => {
+            // Use streaming parser for non-blocking stdin reading
+            match streaming::StreamingParser::from_stdin() {
+                Ok(Some(loader)) => {
+                    // Create initial TableData from headers (rows will stream in)
+                    let initial_data = parser::TableData {
+                        headers: loader.headers().to_vec(),
+                        rows: Vec::with_capacity(100_000),
+                    };
+                    // Return data + loader as Option for event loop to poll
+                    (initial_data, None, ViewMode::PipeData, Some(loader))
+                }
+                Ok(None) => {
                     eprintln!("Error: Invalid or empty input. Expected psql table format.");
                     eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
+                    std::process::exit(1);
+                }
+                Err(e) => {
+                    eprintln!("Error reading stdin: {}", e);
                     std::process::exit(1);
                 }
             }
@@ -237,8 +246,56 @@ fn main() -> io::Result<()> {
     #[allow(unused_assignments)]
     let mut displayed_row_count = 0;
 
+    // Track loading state for completion message
+    let mut prev_loading = false;
+
     // Main event loop
     loop {
+        // Poll streaming loader for new rows
+        let mut is_loading = false;
+        let mut loaded_count: usize = 0;
+        if let Some(ref loader) = streaming_loader {
+            is_loading = !loader.is_complete();
+            loaded_count = loader.total_rows_parsed();
+
+            // Non-blocking receive of new rows
+            let new_rows = loader.try_recv_batch(5000);
+            if !new_rows.is_empty() {
+                // Append to the first tab's data (streaming always uses tab 0)
+                if let Some(tab) = workspace.tabs.get_mut(0) {
+                    // Reserve capacity in larger chunks to minimize reallocations
+                    let new_total = tab.data.rows.len() + new_rows.len();
+                    if new_total > tab.data.rows.capacity() {
+                        let additional = (new_total - tab.data.rows.capacity()).max(50_000);
+                        tab.data.rows.reserve(additional);
+                    }
+                    tab.data.rows.extend(new_rows);
+                }
+            }
+
+            // Clean up loader when complete and channel is drained
+            if loader.is_complete() {
+                // Check if channel still has data
+                let remaining = loader.try_recv_batch(5000);
+                if remaining.is_empty() {
+                    // All data consumed, drop the loader
+                    streaming_loader = None;
+                } else {
+                    // Still draining, append these rows too
+                    if let Some(tab) = workspace.tabs.get_mut(0) {
+                        tab.data.rows.extend(remaining);
+                    }
+                }
+            }
+        }
+
+        // Show loading completion message when transitioning from loading to complete
+        if prev_loading && !is_loading && streaming_loader.is_none() {
+            status_message = Some(format!("Loaded {} rows", loaded_count));
+            status_message_time = Some(Instant::now());
+        }
+        prev_loading = is_loading;
+
         // Build tab bar string BEFORE getting mutable reference to tab
         let tab_bar = build_tab_bar(&workspace);
         let tab_count = workspace.tab_count();
@@ -340,6 +397,13 @@ fn main() -> io::Result<()> {
         displayed_row_count = focused_pane_data
             .map(|p| p.displayed_row_count)
             .unwrap_or(0);
+
+        // Show loading indicator as status message during streaming
+        if is_loading {
+            status_message = Some(format!("Loading... {} rows", loaded_count));
+            // Don't set status_message_time -- we don't want it to auto-clear during loading
+            status_message_time = None;
+        }
 
         // Capture state needed for rendering (to avoid borrow issues)
         let mode = current_mode;
@@ -607,7 +671,19 @@ fn main() -> io::Result<()> {
                                 has_split,
                                 tab_count,
                             ) {
-                                KeyAction::Quit => break,
+                                KeyAction::Quit => {
+                                    if let Some(loader) = streaming_loader.take() {
+                                        // Cancel loading but keep app running with partial data
+                                        loader.cancel();
+                                        // Drop loader (triggers join via Drop impl)
+                                        drop(loader);
+                                        status_message = Some("Loading cancelled".to_string());
+                                        status_message_time = Some(Instant::now());
+                                        // Do NOT break -- let user browse partial data
+                                    } else {
+                                        break; // No streaming -- normal quit
+                                    }
+                                }
                                 KeyAction::StatusMessage(msg) => {
                                     status_message = Some(msg);
                                     status_message_time = Some(Instant::now());
