@@ -48,6 +48,21 @@ use ratatui::{
     widgets::{Paragraph, TableState},
 };
 
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
+/// Install panic hook that restores terminal state before printing panic message.
+/// Must be called BEFORE terminal initialization.
+fn init_panic_hook() {
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
+        original_hook(panic_info);
+    }));
+}
+
 /// Initialize the terminal for TUI rendering.
 /// Enables raw mode, enters alternate screen, and creates a Terminal instance.
 fn init_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
@@ -103,6 +118,9 @@ fn parse_cli() -> (Option<Commands>, Option<(String, String, bool)>) {
 }
 
 fn main() -> io::Result<()> {
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
+
     // Parse CLI arguments
     let (command, db_config) = parse_cli();
 
@@ -211,12 +229,7 @@ fn main() -> io::Result<()> {
     let mut export_format: Option<export::ExportFormat> = None;
 
     // Set up panic hook to restore terminal on crash
-    let original_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let _ = disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
-        original_hook(panic_info);
-    }));
+    init_panic_hook();
 
     let mut terminal = init_terminal()?;
 
