@@ -56,20 +56,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOAD-01 | Pending | Pending |
-| LOAD-02 | Pending | Pending |
-| LOAD-03 | Pending | Pending |
-| LOAD-04 | Pending | Pending |
-| MEM-01 | Pending | Pending |
-| MEM-02 | Pending | Pending |
-| REND-01 | Pending | Pending |
-| REND-02 | Pending | Pending |
+| LOAD-01 | Phase 15 | Pending |
+| LOAD-02 | Phase 15 | Pending |
+| LOAD-03 | Phase 15 | Pending |
+| LOAD-04 | Phase 15 | Pending |
+| MEM-01 | Phase 16 | Pending |
+| MEM-02 | Phase 16 | Pending |
+| REND-01 | Phase 17 | Pending |
+| REND-02 | Phase 17 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8 (pending roadmap creation)
+- Mapped to phases: 8 (100% coverage)
+- Unmapped: 0
+
+**Note:** Phase 14 (Profiling Infrastructure) is foundation work that enables all subsequent phases but doesn't map to specific user-facing requirements. It establishes the measurement infrastructure (Criterion benchmarks, flamegraphs, heap profiling, integration tests) that prevents regressions during optimization phases 15-17.
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after initial definition*
+*Last updated: 2026-02-10 after roadmap creation*

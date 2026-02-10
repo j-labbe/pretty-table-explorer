@@ -11,6 +11,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 - ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-16)
 - ✅ **v1.2.1 Patch** — Phase 9 FIX plans (shipped 2026-01-20)
 - ✅ **v1.3 Code Quality** — Phases 11-13 (shipped 2026-01-20)
+- 🚧 **v1.4 Performance** — Phases 14-17 (in progress)
 
 ## Completed Milestones
 
@@ -69,6 +70,65 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
+## 🚧 v1.4 Performance (In Progress)
+
+**Milestone Goal:** Optimize PTE to handle million-row datasets with fast loading and smooth scrolling.
+
+### Phase 14: Profiling Infrastructure
+**Goal**: Establish measurement-driven optimization foundation
+**Depends on**: Phase 13
+**Requirements**: Foundation for LOAD, MEM, REND requirements
+**Success Criteria** (what must be TRUE):
+  1. Criterion benchmarks exist for parsing, rendering, and scroll operations (detect regressions)
+  2. Developer can generate flamegraphs to identify CPU bottlenecks
+  3. Developer can run heap profiler (dhat) to measure memory allocations
+  4. Integration tests exist for search, export, and column operations (prevent regressions during refactoring)
+  5. Panic hooks restore terminal state on crash
+**Plans**: TBD
+
+Plans:
+- [ ] 14-01: TBD
+
+### Phase 15: Streaming Load
+**Goal**: User sees data immediately while loading continues in background
+**Depends on**: Phase 14
+**Requirements**: LOAD-01, LOAD-02, LOAD-03, LOAD-04
+**Success Criteria** (what must be TRUE):
+  1. User sees first rows on screen within 1 second of piping data (even for 1.8M+ row datasets)
+  2. User sees loading indicator showing "Loaded X rows" during streaming
+  3. User can navigate and scroll through partially-loaded data while loading continues
+  4. User can press Ctrl+C to cancel a long-running load without application crash
+**Plans**: TBD
+
+Plans:
+- [ ] 15-01: TBD
+
+### Phase 16: Memory Optimization
+**Goal**: Reduce memory footprint for large datasets via compact storage
+**Depends on**: Phase 15
+**Requirements**: MEM-01, MEM-02
+**Success Criteria** (what must be TRUE):
+  1. User can load 1.8M row dataset with less than 1GB memory usage (down from ~2GB)
+  2. User sees current memory usage displayed in the status bar
+  3. Search, export, and column operations work correctly with new storage (no regressions)
+**Plans**: TBD
+
+Plans:
+- [ ] 16-01: TBD
+
+### Phase 17: Virtualized Rendering
+**Goal**: Smooth scrolling through massive datasets via viewport optimization
+**Depends on**: Phase 16
+**Requirements**: REND-01, REND-02
+**Success Criteria** (what must be TRUE):
+  1. User experiences smooth scrolling (no lag) through 1.8M+ row datasets at 30+ FPS
+  2. Render time remains constant regardless of dataset size (only visible rows rendered)
+  3. Scroll position stays accurate at top, middle, and bottom of large datasets (no off-by-one errors)
+**Plans**: TBD
+
+Plans:
+- [ ] 17-01: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -86,6 +146,10 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 | 11. Core Types Extraction | v1.3 | 1/1 | Complete | 2026-01-20 |
 | 12. UI Layer Extraction | v1.3 | 2/2 | Complete | 2026-01-20 |
 | 13. Handlers & Cleanup | v1.3 | 2/2 | Complete | 2026-01-20 |
+| 14. Profiling Infrastructure | v1.4 | 0/TBD | Not started | - |
+| 15. Streaming Load | v1.4 | 0/TBD | Not started | - |
+| 16. Memory Optimization | v1.4 | 0/TBD | Not started | - |
+| 17. Virtualized Rendering | v1.4 | 0/TBD | Not started | - |
 
 ## Domain Expertise
 
