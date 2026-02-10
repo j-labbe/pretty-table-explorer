@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 14 of 17 (Profiling Infrastructure)
-Plan: 2 of 3 complete
-Status: In progress
-Last activity: 2026-02-10 — Completed plan 14-03 (Integration Tests for Regression Protection)
+Plan: 3 of 3 complete
+Status: Complete
+Last activity: 2026-02-10 — Completed plan 14-02 (Criterion Benchmarks)
 
 Progress: [████████████░░░░░] 76% (13 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29 + 10 FIX
-- Average duration: ~3.9 min
-- Total execution time: ~131 min
+- Total plans completed: 30 + 10 FIX
+- Average duration: ~4.7 min
+- Total execution time: ~147 min
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Progress: [████████████░░░░░] 76% (13 of 17 ph
 | 11. Core Types Extraction | 1 | 2.5 min | 2.5 min |
 | 12. UI Layer Extraction | 2 | 5 min | 2.5 min |
 | 13. Handlers & Cleanup | 2 | 5 min | 2.5 min |
-| 14. Profiling Infrastructure | 2 | 5.8 min | 2.9 min |
+| 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
 
 **Recent Trend:**
 - v1.4 milestone started: Foundation work fast (2.8 min)
@@ -64,6 +64,8 @@ Recent decisions affecting current work:
 - dhat heap profiling: Enabled via dhat-heap feature flag (14-01)
 - Integration test coverage: 33 tests (10 search + 9 export + 14 column) protect Phase 16 refactoring (14-03)
 - Cross-module test pattern: test_column_visibility_with_export validates column->export integration (14-03)
+- Criterion benchmarks: Parsing (4 row sizes + 4 col sizes), rendering (width calc + render data), scrolling (filtering + column ops) (14-02)
+- Benchmark parameterization: 100-100k rows for regression detection, ~10% filter match rate for realistic scenarios (14-02)
 
 ### Pending Todos
 
@@ -73,7 +75,7 @@ None yet.
 
 **Phase 14 (Profiling Infrastructure):**
 - ~~Must establish comprehensive integration tests before Phase 16 storage refactoring (highest risk phase)~~ ✅ RESOLVED (14-03: 33 integration tests created)
-- Criterion benchmarks needed to detect performance regressions during optimization (pending 14-02)
+- ~~Criterion benchmarks needed to detect performance regressions during optimization~~ ✅ RESOLVED (14-02: benchmarks for parsing, rendering, scrolling)
 
 **Phase 15 (Streaming Load):**
 - Channel capacity tuning is workload-dependent, needs empirical testing with 1.8M rows
@@ -89,5 +91,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 14-03-PLAN.md (Integration Tests for Regression Protection)
-Resume file: .planning/phases/14-profiling-infrastructure/14-03-SUMMARY.md
+Stopped at: Completed plan 14-02-PLAN.md (Criterion Benchmarks)
+Resume file: .planning/phases/14-profiling-infrastructure/14-02-SUMMARY.md
