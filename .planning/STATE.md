@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** Phase 17 - Virtualized Rendering
+**Current focus:** v1.4 Performance milestone complete
 
 ## Current Position
 
 Phase: 17 of 17 (Virtualized Rendering)
-Plan: 1 of 2 complete
-Status: In Progress
-Last activity: 2026-02-10 — Completed plan 17-01 (Event Loop Frame Timing)
+Plan: 2 of 2 complete
+Status: Complete
+Last activity: 2026-02-10 — Completed Phase 17 (Virtualized Rendering)
 
-Progress: [████████████████░] 94% (16 of 17 phases complete)
+Progress: [████████████████████] 100% (17 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 35 + 10 FIX
+- Total plans completed: 36 + 10 FIX
 - Average duration: ~5.3 min
-- Total execution time: ~241 min
+- Total execution time: ~258 min
 
 **By Phase:**
 
@@ -43,16 +43,13 @@ Progress: [████████████████░] 94% (16 of 17 ph
 | 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
 | 15. Streaming Load | 2 | 77 min | 38.5 min |
 | 16. Memory Optimization | 2 | 7 min | 3.5 min |
-| 17. Virtualized Rendering | 1 | 10 min | 10 min |
+| 17. Virtualized Rendering | 2 | 17 min | 8.5 min |
 
 **Recent Trend:**
-- v1.4 milestone: Phase 17 in progress (plan 17-01 complete - frame timing optimization)
-- 30 FPS scrolling achieved through frame-rate-controlled event loop (33ms poll vs 250ms)
-- needs_redraw flag eliminates redundant renders, CPU drops to near-zero when idle
+- v1.4 milestone COMPLETE: All 4 phases (14-17) executed successfully
+- Phase 17: 30 FPS frame timing + 11 scroll boundary tests + viewport filtering bug fix
 - Viewport benchmarks prove O(viewport) constant time (1K-500K rows all ~75µs)
-- Fixed viewport filtering bug preventing slice panics when selected > filtered_count
-- Added 11 comprehensive scroll viewport boundary tests
-- Trend: Proactive testing catches edge cases, deviation rules handle bugs efficiently
+- Milestone delivers: streaming load, memory interning, 30 FPS scrolling for 1.8M+ rows
 
 *Updated after each plan completion*
 
@@ -111,10 +108,10 @@ None yet.
 
 **Phase 17 (Virtualized Rendering):**
 - ~~Off-by-one errors common in virtualized scrolling, needs boundary testing~~ ✅ RESOLVED (17-01: Fixed viewport filtering bug, added 11 boundary tests)
-- In Progress (17-01 complete: 30 FPS frame timing + viewport benchmarks)
+- ✅ COMPLETE (17-02: All boundary tests pass, viewport windowing verified correct)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 17-01-PLAN.md (Event Loop Frame Timing) - Phase 17 plan 1 of 2
-Resume file: .planning/phases/17-virtualized-rendering/17-01-SUMMARY.md
+Stopped at: Phase 17 complete — v1.4 Performance milestone complete
+Resume file: .planning/phases/17-virtualized-rendering/17-VERIFICATION.md

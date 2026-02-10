@@ -11,7 +11,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 - ✅ **v1.2 Advanced Viewing** — Phases 7-10 (shipped 2026-01-16)
 - ✅ **v1.2.1 Patch** — Phase 9 FIX plans (shipped 2026-01-20)
 - ✅ **v1.3 Code Quality** — Phases 11-13 (shipped 2026-01-20)
-- 🚧 **v1.4 Performance** — Phases 14-17 (in progress)
+- ✅ **v1.4 Performance** — Phases 14-17 (shipped 2026-02-10)
 
 ## Completed Milestones
 
@@ -70,7 +70,7 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 
 </details>
 
-## 🚧 v1.4 Performance (In Progress)
+## ✅ v1.4 Performance (Shipped 2026-02-10)
 
 **Milestone Goal:** Optimize PTE to handle million-row datasets with fast loading and smooth scrolling.
 
@@ -131,8 +131,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — Frame rate optimization (30 FPS event loop) + viewport render benchmarks
-- [ ] 17-02-PLAN.md — Scroll boundary integration tests + viewport correctness verification
+- [x] 17-01-PLAN.md — Frame rate optimization (30 FPS event loop) + viewport render benchmarks
+- [x] 17-02-PLAN.md — Scroll boundary integration tests + viewport correctness verification
 
 ## Progress
 
@@ -154,7 +154,7 @@ Plans:
 | 14. Profiling Infrastructure | v1.4 | 3/3 | Complete | 2026-02-10 |
 | 15. Streaming Load | v1.4 | 2/2 | Complete | 2026-02-10 |
 | 16. Memory Optimization | v1.4 | 2/2 | Complete | 2026-02-10 |
-| 17. Virtualized Rendering | v1.4 | 0/2 | Not started | - |
+| 17. Virtualized Rendering | v1.4 | 2/2 | Complete | 2026-02-10 |
 
 ## Domain Expertise
 
