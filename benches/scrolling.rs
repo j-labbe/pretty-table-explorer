@@ -6,24 +6,26 @@ use pretty_table_explorer::workspace::{Tab, ViewMode};
 
 /// Create a test table with some rows containing a special marker for filtering.
 fn create_test_table_with_filter(num_rows: usize, num_cols: usize) -> TableData {
+    use lasso::Rodeo;
     let headers: Vec<String> = (1..=num_cols).map(|i| format!("col_{}", i)).collect();
 
-    let rows: Vec<Vec<String>> = (1..=num_rows)
+    let mut interner = Rodeo::default();
+    let rows = (1..=num_rows)
         .map(|row| {
             (1..=num_cols)
                 .map(|col| {
                     // Mark ~10% of rows with "special_value" for filtering
                     if row % 10 == 0 {
-                        format!("special_value_{}_{}", row, col)
+                        interner.get_or_intern(format!("special_value_{}_{}", row, col))
                     } else {
-                        format!("val_{}_{}", row, col)
+                        interner.get_or_intern(format!("val_{}_{}", row, col))
                     }
                 })
                 .collect()
         })
         .collect();
 
-    TableData { headers, rows }
+    TableData { headers, rows, interner }
 }
 
 /// Benchmark row filtering performance (search/filter operations).

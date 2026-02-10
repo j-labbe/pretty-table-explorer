@@ -5,17 +5,19 @@ use pretty_table_explorer::workspace::{Tab, ViewMode};
 
 /// Create a TableData struct directly for benchmarking (no parsing overhead).
 fn create_test_table(num_rows: usize, num_cols: usize) -> TableData {
+    use lasso::Rodeo;
     let headers: Vec<String> = (1..=num_cols).map(|i| format!("col_{}", i)).collect();
 
-    let rows: Vec<Vec<String>> = (1..=num_rows)
+    let mut interner = Rodeo::default();
+    let rows = (1..=num_rows)
         .map(|row| {
             (1..=num_cols)
-                .map(|col| format!("val_{}_{}", row, col))
+                .map(|col| interner.get_or_intern(format!("val_{}_{}", row, col)))
                 .collect()
         })
         .collect();
 
-    TableData { headers, rows }
+    TableData { headers, rows, interner }
 }
 
 /// Benchmark column width calculation (scanning all cells for max width).
