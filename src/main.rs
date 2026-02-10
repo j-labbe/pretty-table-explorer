@@ -259,6 +259,14 @@ fn main() -> io::Result<()> {
         memory_mb = process.memory() / 1024 / 1024;
     }
 
+    // Frame timing constants for 30 FPS target
+    const TARGET_FPS: u64 = 30;
+    const FRAME_TIME_MS: u64 = 1000 / TARGET_FPS; // 33ms
+
+    // Render state tracking for idle optimization
+    let mut last_render = Instant::now();
+    let mut needs_redraw = true; // Always render first frame
+
     // Main event loop
     loop {
         // Refresh memory stats every ~30 frames (~1 second at ~30 FPS)
@@ -286,6 +294,7 @@ fn main() -> io::Result<()> {
                     // Intern strings on main thread before appending
                     tab.intern_and_append_rows(new_rows);
                 }
+                needs_redraw = true; // New data requires render update
             }
 
             // Clean up loader when complete and channel is drained
@@ -309,6 +318,7 @@ fn main() -> io::Result<()> {
             let actual_rows = workspace.tabs.first().map(|t| t.data.rows.len()).unwrap_or(0);
             status_message = Some(format!("Loaded {} rows", actual_rows));
             status_message_time = Some(Instant::now());
+            needs_redraw = true; // Completion message requires render
         }
 
         // Build tab bar string BEFORE getting mutable reference to tab
@@ -432,12 +442,16 @@ fn main() -> io::Result<()> {
             status_message = Some(format!("Loading... {} rows", actual_rows));
             // Don't set status_message_time -- we don't want it to auto-clear during loading
             status_message_time = None;
+            needs_redraw = true; // Loading indicator update requires render
         }
 
-        // Capture state needed for rendering (to avoid borrow issues)
-        let mode = current_mode;
-        let input_buf = input_buffer.clone();
-        let status = status_message.clone();
+        // Only render if redraw needed or frame time elapsed
+        let now = Instant::now();
+        if needs_redraw || now.duration_since(last_render).as_millis() as u64 >= FRAME_TIME_MS {
+            // Capture state needed for rendering (to avoid borrow issues)
+            let mode = current_mode;
+            let input_buf = input_buffer.clone();
+            let status = status_message.clone();
 
         // Build memory display string
         let mem_info = if memory_mb > 0 {
@@ -698,14 +712,19 @@ fn main() -> io::Result<()> {
             *right_table_state.offset_mut() += right_viewport_offset;
         }
 
-        // Sync table states back to workspace
-        if let Some(tab) = workspace.tabs.get_mut(workspace.active_idx) {
-            tab.table_state = left_table_state;
-        }
-        if is_split {
-            if let Some(tab) = workspace.tabs.get_mut(workspace.split_idx) {
-                tab.table_state = right_table_state;
+            // Sync table states back to workspace
+            if let Some(tab) = workspace.tabs.get_mut(workspace.active_idx) {
+                tab.table_state = left_table_state;
             }
+            if is_split {
+                if let Some(tab) = workspace.tabs.get_mut(workspace.split_idx) {
+                    tab.table_state = right_table_state;
+                }
+            }
+
+            // Update render timing
+            last_render = Instant::now();
+            needs_redraw = false;
         }
 
         // Clear status message after 3 seconds
@@ -716,9 +735,14 @@ fn main() -> io::Result<()> {
             }
         }
 
-        // Poll with 250ms timeout for responsive feel
-        if event::poll(Duration::from_millis(250))? {
+        // Frame-time-aware polling for 30 FPS target
+        let now = Instant::now();
+        let elapsed = now.duration_since(last_render).as_millis() as u64;
+        let poll_duration = FRAME_TIME_MS.saturating_sub(elapsed).max(1);
+
+        if event::poll(Duration::from_millis(poll_duration))? {
             if let Event::Key(key) = event::read()? {
+                needs_redraw = true; // Any key event triggers redraw
                 // Pending action for deferred tab creation (to avoid borrow conflicts)
                 let mut pending_action = PendingAction::None;
 

@@ -120,8 +120,10 @@ pub fn build_pane_render_data(tab: &Tab, viewport_height: usize) -> PaneRenderDa
             .map(|(i, _)| i)
             .collect();
         let total = filtered_indices.len();
-        let start = selected.saturating_sub(buffer);
+        let start = selected.saturating_sub(buffer).min(total);
         let end = selected.saturating_add(buffer).min(total);
+        // Ensure start <= end (handles case where selected > total)
+        let start = start.min(end);
         let rows: Vec<Vec<String>> = filtered_indices[start..end]
             .iter()
             .map(|&i| {
