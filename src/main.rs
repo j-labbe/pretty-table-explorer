@@ -3,18 +3,20 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
-use sysinfo::{System, Pid, ProcessesToUpdate};
-use pretty_table_explorer::{db, export, handlers, parser, render, state, streaming, update, workspace};
 use handlers::{
     handle_export_filename, handle_export_format, handle_normal_mode, handle_query_input,
     handle_search_input, KeyAction, WorkspaceOp,
 };
 use parser::TableData;
+use pretty_table_explorer::{
+    db, export, handlers, parser, render, state, streaming, update, workspace,
+};
 use render::{
     build_controls_hint, build_pane_render_data, build_pane_title, build_tab_bar,
     render_format_prompt, render_input_bar, render_table_pane,
 };
 use state::{AppMode, PendingAction};
+use sysinfo::{Pid, ProcessesToUpdate, System};
 use workspace::{ViewMode, Workspace};
 
 /// Interactive terminal table viewer for PostgreSQL
@@ -315,7 +317,11 @@ fn main() -> io::Result<()> {
 
         // Detect streaming completion (loader was present but just removed)
         if had_streaming_loader && streaming_loader.is_none() {
-            let actual_rows = workspace.tabs.first().map(|t| t.data.rows.len()).unwrap_or(0);
+            let actual_rows = workspace
+                .tabs
+                .first()
+                .map(|t| t.data.rows.len())
+                .unwrap_or(0);
             status_message = Some(format!("Loaded {} rows", actual_rows));
             status_message_time = Some(Instant::now());
             needs_redraw = true; // Completion message requires render
@@ -438,7 +444,11 @@ fn main() -> io::Result<()> {
 
         // Show loading indicator as status message while streaming loader is active
         if streaming_loader.is_some() {
-            let actual_rows = workspace.tabs.first().map(|t| t.data.rows.len()).unwrap_or(0);
+            let actual_rows = workspace
+                .tabs
+                .first()
+                .map(|t| t.data.rows.len())
+                .unwrap_or(0);
             status_message = Some(format!("Loading... {} rows", actual_rows));
             // Don't set status_message_time -- we don't want it to auto-clear during loading
             status_message_time = None;
@@ -453,264 +463,271 @@ fn main() -> io::Result<()> {
             let input_buf = input_buffer.clone();
             let status = status_message.clone();
 
-        // Build memory display string
-        let mem_info = if memory_mb > 0 {
-            format!("Mem: {} MB ", memory_mb)
-        } else {
-            String::new()  // Don't show 0 MB before first refresh
-        };
-
-        // Capture view modes for closure (per-tab view modes)
-        let left_view_mode = workspace
-            .tabs
-            .get(workspace.active_idx)
-            .map(|t| t.view_mode)
-            .unwrap_or(ViewMode::PipeData);
-        let right_view_mode = if is_split {
-            workspace
-                .tabs
-                .get(workspace.split_idx)
-                .map(|t| t.view_mode)
-                .unwrap_or(ViewMode::PipeData)
-        } else {
-            left_view_mode
-        };
-        // Focused tab's view mode for controls display
-        let current_view = if is_split && !workspace.focus_left {
-            right_view_mode
-        } else {
-            left_view_mode
-        };
-        let table_name = current_table_name.clone();
-
-        // Capture focus state
-        let focus_left = workspace.focus_left;
-
-        // Clone table states for mutable use in render
-        let mut left_table_state = workspace
-            .tabs
-            .get(workspace.active_idx)
-            .map(|t| t.table_state.clone())
-            .unwrap_or_default();
-        let mut right_table_state = if is_split {
-            workspace
-                .tabs
-                .get(workspace.split_idx)
-                .map(|t| t.table_state.clone())
-                .unwrap_or_default()
-        } else {
-            TableState::default()
-        };
-
-        // Adjust table states for viewport windowing (translate absolute → relative)
-        let left_viewport_offset = left_pane_data
-            .as_ref()
-            .map(|p| p.viewport_row_offset)
-            .unwrap_or(0);
-        let right_viewport_offset = right_pane_data
-            .as_ref()
-            .map(|p| p.viewport_row_offset)
-            .unwrap_or(0);
-        if left_viewport_offset > 0 {
-            if let Some(sel) = left_table_state.selected() {
-                left_table_state.select(Some(sel.saturating_sub(left_viewport_offset)));
-            }
-            *left_table_state.offset_mut() = left_table_state
-                .offset()
-                .saturating_sub(left_viewport_offset);
-        }
-        if right_viewport_offset > 0 {
-            if let Some(sel) = right_table_state.selected() {
-                right_table_state.select(Some(sel.saturating_sub(right_viewport_offset)));
-            }
-            *right_table_state.offset_mut() = right_table_state
-                .offset()
-                .saturating_sub(right_viewport_offset);
-        }
-
-        terminal.draw(|frame| {
-            let area = frame.area();
-
-            // Split layout: table area + optional input bar at bottom
-            let show_input_bar = mode != AppMode::Normal && mode != AppMode::ExportFormat;
-            let show_format_prompt = mode == AppMode::ExportFormat;
-            let chunks = if show_input_bar || show_format_prompt {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(3), Constraint::Length(3)])
-                    .split(area)
+            // Build memory display string
+            let mem_info = if memory_mb > 0 {
+                format!("Mem: {} MB ", memory_mb)
             } else {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(3)])
-                    .split(area)
+                String::new() // Don't show 0 MB before first refresh
             };
 
-            let table_area = chunks[0];
-
-            // Build title components
-            let status_info = status
-                .as_ref()
-                .map(|s| format!("{} ", s))
-                .unwrap_or_default();
-
-            if is_split {
-                // Split view: vertical layout with tab bar, panes, and controls
-                let split_layout = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([
-                        Constraint::Length(1), // Tab bar
-                        Constraint::Min(3),    // Panes
-                        Constraint::Length(1), // Controls
-                    ])
-                    .split(table_area);
-
-                let tab_bar_area = split_layout[0];
-                let panes_area = split_layout[1];
-                let controls_area = split_layout[2];
-
-                // Render tab bar at top
-                let tab_bar_widget =
-                    Paragraph::new(tab_bar.clone()).style(Style::default().fg(Color::Cyan));
-                frame.render_widget(tab_bar_widget, tab_bar_area);
-
-                // Split panes horizontally
-                let pane_chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-                    .split(panes_area);
-
-                // Render left pane (active tab)
-                if let Some(ref pane_data) = left_pane_data {
-                    let pane_title =
-                        build_pane_title(pane_data, &table_name, left_view_mode, focus_left);
-                    render_table_pane(
-                        frame,
-                        pane_chunks[0],
-                        pane_data,
-                        pane_title,
-                        focus_left,
-                        &mut left_table_state,
-                        &last_visible_col_idx,
-                    );
-                }
-
-                // Render right pane (split tab)
-                if let Some(ref pane_data) = right_pane_data {
-                    let pane_title =
-                        build_pane_title(pane_data, &table_name, right_view_mode, !focus_left);
-                    render_table_pane(
-                        frame,
-                        pane_chunks[1],
-                        pane_data,
-                        pane_title,
-                        !focus_left,
-                        &mut right_table_state,
-                        &last_visible_col_idx,
-                    );
-                }
-
-                // Build and render controls hint at bottom
-                let controls = build_controls_hint(current_view, is_split, tab_count);
-                let controls_widget = Paragraph::new(format!("{}{}{}", mem_info, status_info, controls))
-                    .style(Style::default().fg(Color::DarkGray));
-                frame.render_widget(controls_widget, controls_area);
+            // Capture view modes for closure (per-tab view modes)
+            let left_view_mode = workspace
+                .tabs
+                .get(workspace.active_idx)
+                .map(|t| t.view_mode)
+                .unwrap_or(ViewMode::PipeData);
+            let right_view_mode = if is_split {
+                workspace
+                    .tabs
+                    .get(workspace.split_idx)
+                    .map(|t| t.view_mode)
+                    .unwrap_or(ViewMode::PipeData)
             } else {
-                // Single pane mode
-                if let Some(ref pane_data) = left_pane_data {
-                    // Build full title with tab bar, position info, filter, status, and controls
-                    let row_info = pane_data
-                        .selected_row
-                        .map(|r| {
-                            if pane_data.filter_text.is_empty() {
-                                format!("Row {}/{}", r + 1, pane_data.total_rows)
-                            } else {
-                                format!(
-                                    "Row {}/{} (filtered from {})",
-                                    r + 1,
-                                    pane_data.displayed_row_count,
-                                    pane_data.total_rows
-                                )
-                            }
-                        })
-                        .unwrap_or_default();
+                left_view_mode
+            };
+            // Focused tab's view mode for controls display
+            let current_view = if is_split && !workspace.focus_left {
+                right_view_mode
+            } else {
+                left_view_mode
+            };
+            let table_name = current_table_name.clone();
 
-                    let hidden_info = if pane_data.hidden_count > 0 {
-                        format!(" ({} hidden)", pane_data.hidden_count)
-                    } else {
-                        String::new()
-                    };
-                    let col_info = if !pane_data.visible_cols.is_empty() {
-                        format!(
-                            " Col {}/{}{}",
-                            pane_data.selected_visible_col + 1,
-                            pane_data.visible_count,
-                            hidden_info
-                        )
-                    } else {
-                        String::new()
-                    };
+            // Capture focus state
+            let focus_left = workspace.focus_left;
 
-                    let position = if row_info.is_empty() {
-                        String::new()
-                    } else {
-                        format!("[{}{}] ", row_info, col_info)
-                    };
+            // Clone table states for mutable use in render
+            let mut left_table_state = workspace
+                .tabs
+                .get(workspace.active_idx)
+                .map(|t| t.table_state.clone())
+                .unwrap_or_default();
+            let mut right_table_state = if is_split {
+                workspace
+                    .tabs
+                    .get(workspace.split_idx)
+                    .map(|t| t.table_state.clone())
+                    .unwrap_or_default()
+            } else {
+                TableState::default()
+            };
 
-                    let filter_info = if !pane_data.filter_text.is_empty() {
-                        format!("/{} ", pane_data.filter_text)
-                    } else {
-                        String::new()
-                    };
-
-                    let context_label: &str = match current_view {
-                        ViewMode::TableList => "Tables",
-                        ViewMode::TableData => table_name.as_deref().unwrap_or("Query Result"),
-                        ViewMode::PipeData => "Data",
-                    };
-                    let controls = build_controls_hint(current_view, is_split, tab_count);
-
-                    let title = format!(
-                        "{}{} {} {}{}{}{}",
-                        tab_bar, context_label, position, filter_info, mem_info, status_info, controls
-                    );
-
-                    render_table_pane(
-                        frame,
-                        table_area,
-                        pane_data,
-                        title,
-                        true, // Always focused in single pane mode
-                        &mut left_table_state,
-                        &last_visible_col_idx,
-                    );
+            // Adjust table states for viewport windowing (translate absolute → relative)
+            let left_viewport_offset = left_pane_data
+                .as_ref()
+                .map(|p| p.viewport_row_offset)
+                .unwrap_or(0);
+            let right_viewport_offset = right_pane_data
+                .as_ref()
+                .map(|p| p.viewport_row_offset)
+                .unwrap_or(0);
+            if left_viewport_offset > 0 {
+                if let Some(sel) = left_table_state.selected() {
+                    left_table_state.select(Some(sel.saturating_sub(left_viewport_offset)));
                 }
+                *left_table_state.offset_mut() = left_table_state
+                    .offset()
+                    .saturating_sub(left_viewport_offset);
+            }
+            if right_viewport_offset > 0 {
+                if let Some(sel) = right_table_state.selected() {
+                    right_table_state.select(Some(sel.saturating_sub(right_viewport_offset)));
+                }
+                *right_table_state.offset_mut() = right_table_state
+                    .offset()
+                    .saturating_sub(right_viewport_offset);
             }
 
-            // Render input bar when in input mode
-            if show_input_bar {
-                render_input_bar(frame, chunks[1], mode, &input_buf);
-            }
+            terminal.draw(|frame| {
+                let area = frame.area();
 
-            // Render format selection prompt
-            if show_format_prompt {
-                render_format_prompt(frame, chunks[1]);
-            }
-        })?;
+                // Split layout: table area + optional input bar at bottom
+                let show_input_bar = mode != AppMode::Normal && mode != AppMode::ExportFormat;
+                let show_format_prompt = mode == AppMode::ExportFormat;
+                let chunks = if show_input_bar || show_format_prompt {
+                    Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([Constraint::Min(3), Constraint::Length(3)])
+                        .split(area)
+                } else {
+                    Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([Constraint::Min(3)])
+                        .split(area)
+                };
 
-        // Translate table states back from viewport-relative to absolute
-        if left_viewport_offset > 0 {
-            if let Some(sel) = left_table_state.selected() {
-                left_table_state.select(Some(sel + left_viewport_offset));
+                let table_area = chunks[0];
+
+                // Build title components
+                let status_info = status
+                    .as_ref()
+                    .map(|s| format!("{} ", s))
+                    .unwrap_or_default();
+
+                if is_split {
+                    // Split view: vertical layout with tab bar, panes, and controls
+                    let split_layout = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints([
+                            Constraint::Length(1), // Tab bar
+                            Constraint::Min(3),    // Panes
+                            Constraint::Length(1), // Controls
+                        ])
+                        .split(table_area);
+
+                    let tab_bar_area = split_layout[0];
+                    let panes_area = split_layout[1];
+                    let controls_area = split_layout[2];
+
+                    // Render tab bar at top
+                    let tab_bar_widget =
+                        Paragraph::new(tab_bar.clone()).style(Style::default().fg(Color::Cyan));
+                    frame.render_widget(tab_bar_widget, tab_bar_area);
+
+                    // Split panes horizontally
+                    let pane_chunks = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                        .split(panes_area);
+
+                    // Render left pane (active tab)
+                    if let Some(ref pane_data) = left_pane_data {
+                        let pane_title =
+                            build_pane_title(pane_data, &table_name, left_view_mode, focus_left);
+                        render_table_pane(
+                            frame,
+                            pane_chunks[0],
+                            pane_data,
+                            pane_title,
+                            focus_left,
+                            &mut left_table_state,
+                            &last_visible_col_idx,
+                        );
+                    }
+
+                    // Render right pane (split tab)
+                    if let Some(ref pane_data) = right_pane_data {
+                        let pane_title =
+                            build_pane_title(pane_data, &table_name, right_view_mode, !focus_left);
+                        render_table_pane(
+                            frame,
+                            pane_chunks[1],
+                            pane_data,
+                            pane_title,
+                            !focus_left,
+                            &mut right_table_state,
+                            &last_visible_col_idx,
+                        );
+                    }
+
+                    // Build and render controls hint at bottom
+                    let controls = build_controls_hint(current_view, is_split, tab_count);
+                    let controls_widget =
+                        Paragraph::new(format!("{}{}{}", mem_info, status_info, controls))
+                            .style(Style::default().fg(Color::DarkGray));
+                    frame.render_widget(controls_widget, controls_area);
+                } else {
+                    // Single pane mode
+                    if let Some(ref pane_data) = left_pane_data {
+                        // Build full title with tab bar, position info, filter, status, and controls
+                        let row_info = pane_data
+                            .selected_row
+                            .map(|r| {
+                                if pane_data.filter_text.is_empty() {
+                                    format!("Row {}/{}", r + 1, pane_data.total_rows)
+                                } else {
+                                    format!(
+                                        "Row {}/{} (filtered from {})",
+                                        r + 1,
+                                        pane_data.displayed_row_count,
+                                        pane_data.total_rows
+                                    )
+                                }
+                            })
+                            .unwrap_or_default();
+
+                        let hidden_info = if pane_data.hidden_count > 0 {
+                            format!(" ({} hidden)", pane_data.hidden_count)
+                        } else {
+                            String::new()
+                        };
+                        let col_info = if !pane_data.visible_cols.is_empty() {
+                            format!(
+                                " Col {}/{}{}",
+                                pane_data.selected_visible_col + 1,
+                                pane_data.visible_count,
+                                hidden_info
+                            )
+                        } else {
+                            String::new()
+                        };
+
+                        let position = if row_info.is_empty() {
+                            String::new()
+                        } else {
+                            format!("[{}{}] ", row_info, col_info)
+                        };
+
+                        let filter_info = if !pane_data.filter_text.is_empty() {
+                            format!("/{} ", pane_data.filter_text)
+                        } else {
+                            String::new()
+                        };
+
+                        let context_label: &str = match current_view {
+                            ViewMode::TableList => "Tables",
+                            ViewMode::TableData => table_name.as_deref().unwrap_or("Query Result"),
+                            ViewMode::PipeData => "Data",
+                        };
+                        let controls = build_controls_hint(current_view, is_split, tab_count);
+
+                        let title = format!(
+                            "{}{} {} {}{}{}{}",
+                            tab_bar,
+                            context_label,
+                            position,
+                            filter_info,
+                            mem_info,
+                            status_info,
+                            controls
+                        );
+
+                        render_table_pane(
+                            frame,
+                            table_area,
+                            pane_data,
+                            title,
+                            true, // Always focused in single pane mode
+                            &mut left_table_state,
+                            &last_visible_col_idx,
+                        );
+                    }
+                }
+
+                // Render input bar when in input mode
+                if show_input_bar {
+                    render_input_bar(frame, chunks[1], mode, &input_buf);
+                }
+
+                // Render format selection prompt
+                if show_format_prompt {
+                    render_format_prompt(frame, chunks[1]);
+                }
+            })?;
+
+            // Translate table states back from viewport-relative to absolute
+            if left_viewport_offset > 0 {
+                if let Some(sel) = left_table_state.selected() {
+                    left_table_state.select(Some(sel + left_viewport_offset));
+                }
+                *left_table_state.offset_mut() += left_viewport_offset;
             }
-            *left_table_state.offset_mut() += left_viewport_offset;
-        }
-        if right_viewport_offset > 0 {
-            if let Some(sel) = right_table_state.selected() {
-                right_table_state.select(Some(sel + right_viewport_offset));
+            if right_viewport_offset > 0 {
+                if let Some(sel) = right_table_state.selected() {
+                    right_table_state.select(Some(sel + right_viewport_offset));
+                }
+                *right_table_state.offset_mut() += right_viewport_offset;
             }
-            *right_table_state.offset_mut() += right_viewport_offset;
-        }
 
             // Sync table states back to workspace
             if let Some(tab) = workspace.tabs.get_mut(workspace.active_idx) {
@@ -743,7 +760,7 @@ fn main() -> io::Result<()> {
         if event::poll(Duration::from_millis(poll_duration))? {
             if let Event::Key(key) = event::read()? {
                 needs_redraw = true; // Any key event triggers redraw
-                // Pending action for deferred tab creation (to avoid borrow conflicts)
+                                     // Pending action for deferred tab creation (to avoid borrow conflicts)
                 let mut pending_action = PendingAction::None;
 
                 // Capture workspace state before borrowing tab (to avoid borrow conflicts)

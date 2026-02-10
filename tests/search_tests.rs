@@ -36,7 +36,10 @@ fn test_parse_and_filter_matching_rows() {
     // Build render data and check filtered results
     let render_data = build_pane_render_data(&tab, usize::MAX);
 
-    assert_eq!(render_data.displayed_row_count, 2, "Should match 2 rows containing 'alice'");
+    assert_eq!(
+        render_data.displayed_row_count, 2,
+        "Should match 2 rows containing 'alice'"
+    );
     assert_eq!(render_data.total_rows, 10, "Total rows should be 10");
 }
 
@@ -50,15 +53,20 @@ fn test_filter_case_insensitive() {
 
     let render_data = build_pane_render_data(&tab, usize::MAX);
 
-    assert_eq!(render_data.displayed_row_count, 2, "Case-insensitive search should match both 'Alice' and 'alice'");
+    assert_eq!(
+        render_data.displayed_row_count, 2,
+        "Case-insensitive search should match both 'Alice' and 'alice'"
+    );
 
     // Verify the actual matches
-    assert!(render_data.display_rows.iter().any(|row|
-        row.iter().any(|cell| cell.eq_ignore_ascii_case("Alice"))
-    ));
-    assert!(render_data.display_rows.iter().any(|row|
-        row.iter().any(|cell| cell.eq_ignore_ascii_case("alice"))
-    ));
+    assert!(render_data
+        .display_rows
+        .iter()
+        .any(|row| row.iter().any(|cell| cell.eq_ignore_ascii_case("Alice"))));
+    assert!(render_data
+        .display_rows
+        .iter()
+        .any(|row| row.iter().any(|cell| cell.eq_ignore_ascii_case("alice"))));
 }
 
 #[test]
@@ -70,7 +78,10 @@ fn test_filter_no_matches() {
 
     let render_data = build_pane_render_data(&tab, usize::MAX);
 
-    assert_eq!(render_data.displayed_row_count, 0, "Filter with no matches should return 0 rows");
+    assert_eq!(
+        render_data.displayed_row_count, 0,
+        "Filter with no matches should return 0 rows"
+    );
     assert_eq!(render_data.display_rows.len(), 0);
 }
 
@@ -83,7 +94,10 @@ fn test_filter_empty_string() {
 
     let render_data = build_pane_render_data(&tab, usize::MAX);
 
-    assert_eq!(render_data.displayed_row_count, 10, "Empty filter should return all rows");
+    assert_eq!(
+        render_data.displayed_row_count, 10,
+        "Empty filter should return all rows"
+    );
     assert_eq!(render_data.total_rows, 10);
 }
 
@@ -97,7 +111,10 @@ fn test_filter_partial_match() {
 
     let render_data = build_pane_render_data(&tab, usize::MAX);
 
-    assert_eq!(render_data.displayed_row_count, 2, "Partial match 'ali' should match 'Alice' and 'alice'");
+    assert_eq!(
+        render_data.displayed_row_count, 2,
+        "Partial match 'ali' should match 'Alice' and 'alice'"
+    );
 }
 
 #[test]
@@ -130,7 +147,11 @@ fn test_parse_multiline_psql() {
     // Verify that the footer line "(N rows)" is excluded from data rows
     let table_data = parse_psql(SAMPLE_PSQL_OUTPUT).expect("Failed to parse multiline psql output");
 
-    assert_eq!(table_data.rows.len(), 10, "Should have exactly 10 data rows (footer excluded)");
+    assert_eq!(
+        table_data.rows.len(),
+        10,
+        "Should have exactly 10 data rows (footer excluded)"
+    );
 
     // Verify footer is not in the data
     for row in &table_data.rows {
@@ -154,10 +175,13 @@ fn test_filter_matches_any_column() {
 
     let render_data = build_pane_render_data(&tab, usize::MAX);
 
-    assert_eq!(render_data.displayed_row_count, 1, "Should match 1 row with 'Seattle'");
-    assert!(render_data.display_rows[0].iter().any(|cell|
-        cell.to_lowercase().contains("seattle")
-    ));
+    assert_eq!(
+        render_data.displayed_row_count, 1,
+        "Should match 1 row with 'Seattle'"
+    );
+    assert!(render_data.display_rows[0]
+        .iter()
+        .any(|cell| cell.to_lowercase().contains("seattle")));
 }
 
 #[test]
@@ -171,5 +195,8 @@ fn test_filter_with_numbers() {
     let render_data = build_pane_render_data(&tab, usize::MAX);
 
     // Should match row with age 30
-    assert!(render_data.displayed_row_count >= 1, "Should match at least one row with '30'");
+    assert!(
+        render_data.displayed_row_count >= 1,
+        "Should match at least one row with '30'"
+    );
 }

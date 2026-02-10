@@ -15,17 +15,13 @@ fn generate_psql_output(num_rows: usize, num_cols: usize) -> String {
     let mut output = String::new();
 
     // Generate header row
-    let headers: Vec<String> = (1..=num_cols)
-        .map(|i| format!("col_{}", i))
-        .collect();
-    output.push_str(" ");
+    let headers: Vec<String> = (1..=num_cols).map(|i| format!("col_{}", i)).collect();
+    output.push(' ');
     output.push_str(&headers.join(" | "));
     output.push('\n');
 
     // Generate separator row
-    let separator: Vec<String> = (1..=num_cols)
-        .map(|_| "-------".to_string())
-        .collect();
+    let separator: Vec<String> = (1..=num_cols).map(|_| "-------".to_string()).collect();
     output.push_str(&separator.join("+"));
     output.push('\n');
 
@@ -46,7 +42,7 @@ fn generate_psql_output(num_rows: usize, num_cols: usize) -> String {
                 }
             })
             .collect();
-        output.push_str(" ");
+        output.push(' ');
         output.push_str(&cells.join(" | "));
         output.push('\n');
     }
@@ -65,17 +61,13 @@ fn bench_parse_rows(c: &mut Criterion) {
     for num_rows in [100, 1_000, 10_000, 100_000] {
         let input = generate_psql_output(num_rows, 10);
 
-        group.bench_with_input(
-            BenchmarkId::new("rows", num_rows),
-            &input,
-            |b, input| {
-                b.iter(|| {
-                    // black_box prevents compiler from optimizing away the call
-                    let result = parse_psql(black_box(input));
-                    black_box(result)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("rows", num_rows), &input, |b, input| {
+            b.iter(|| {
+                // black_box prevents compiler from optimizing away the call
+                let result = parse_psql(black_box(input));
+                black_box(result)
+            });
+        });
     }
 
     group.finish();
@@ -89,16 +81,12 @@ fn bench_parse_cols(c: &mut Criterion) {
     for num_cols in [3, 10, 25, 50] {
         let input = generate_psql_output(10_000, num_cols);
 
-        group.bench_with_input(
-            BenchmarkId::new("cols", num_cols),
-            &input,
-            |b, input| {
-                b.iter(|| {
-                    let result = parse_psql(black_box(input));
-                    black_box(result)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("cols", num_cols), &input, |b, input| {
+            b.iter(|| {
+                let result = parse_psql(black_box(input));
+                black_box(result)
+            });
+        });
     }
 
     group.finish();

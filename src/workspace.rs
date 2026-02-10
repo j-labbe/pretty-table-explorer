@@ -270,14 +270,8 @@ mod tests {
         use lasso::Rodeo;
         let mut interner = Rodeo::default();
         let rows = vec![
-            vec![
-                interner.get_or_intern("1"),
-                interner.get_or_intern("Alice"),
-            ],
-            vec![
-                interner.get_or_intern("2"),
-                interner.get_or_intern("Bob"),
-            ],
+            vec![interner.get_or_intern("1"), interner.get_or_intern("Alice")],
+            vec![interner.get_or_intern("2"), interner.get_or_intern("Bob")],
         ];
         TableData {
             headers: vec!["id".to_string(), "name".to_string()],

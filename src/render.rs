@@ -114,8 +114,12 @@ pub fn build_pane_render_data(tab: &Tab, viewport_height: usize) -> PaneRenderDa
             .iter()
             .enumerate()
             .filter(|(_, row)| {
-                row.iter()
-                    .any(|cell| tab.data.resolve(cell).to_lowercase().contains(&filter_lower))
+                row.iter().any(|cell| {
+                    tab.data
+                        .resolve(cell)
+                        .to_lowercase()
+                        .contains(&filter_lower)
+                })
             })
             .map(|(i, _)| i)
             .collect();

@@ -17,7 +17,11 @@ fn create_test_table(num_rows: usize, num_cols: usize) -> TableData {
         })
         .collect();
 
-    TableData { headers, rows, interner }
+    TableData {
+        headers,
+        rows,
+        interner,
+    }
 }
 
 /// Benchmark column width calculation (scanning all cells for max width).
@@ -28,16 +32,12 @@ fn bench_column_width_calculation(c: &mut Criterion) {
     for num_rows in [1_000, 10_000, 100_000] {
         let data = create_test_table(num_rows, 10);
 
-        group.bench_with_input(
-            BenchmarkId::new("rows", num_rows),
-            &data,
-            |b, data| {
-                b.iter(|| {
-                    let widths = calculate_auto_widths(black_box(data));
-                    black_box(widths)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("rows", num_rows), &data, |b, data| {
+            b.iter(|| {
+                let widths = calculate_auto_widths(black_box(data));
+                black_box(widths)
+            });
+        });
     }
 
     group.finish();
@@ -81,16 +81,12 @@ fn bench_viewport_render_scaling(c: &mut Criterion) {
         // Position cursor at middle of dataset
         tab.table_state.select(Some(num_rows / 2));
 
-        group.bench_with_input(
-            BenchmarkId::new("rows", num_rows),
-            &tab,
-            |b, tab| {
-                b.iter(|| {
-                    let render_data = build_pane_render_data(black_box(tab), viewport_height);
-                    black_box(render_data)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("rows", num_rows), &tab, |b, tab| {
+            b.iter(|| {
+                let render_data = build_pane_render_data(black_box(tab), viewport_height);
+                black_box(render_data)
+            });
+        });
     }
 
     group.finish();
@@ -113,16 +109,12 @@ fn bench_viewport_render_at_boundaries(c: &mut Criterion) {
         tab.update_cached_widths();
         tab.table_state.select(Some(position));
 
-        group.bench_with_input(
-            BenchmarkId::new("position", label),
-            &tab,
-            |b, tab| {
-                b.iter(|| {
-                    let render_data = build_pane_render_data(black_box(tab), viewport_height);
-                    black_box(render_data)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("position", label), &tab, |b, tab| {
+            b.iter(|| {
+                let render_data = build_pane_render_data(black_box(tab), viewport_height);
+                black_box(render_data)
+            });
+        });
     }
 
     group.finish();

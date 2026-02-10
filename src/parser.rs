@@ -354,10 +354,7 @@ mod tests {
 
     #[test]
     fn test_parse_psql_header_no_separator() {
-        let lines = vec![
-            " id | name  | age",
-            " 1  | Alice | 30",
-        ];
+        let lines = vec![" id | name  | age", " 1  | Alice | 30"];
 
         let result = parse_psql_header(&lines);
         assert!(result.is_none());

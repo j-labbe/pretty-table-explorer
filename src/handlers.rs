@@ -89,7 +89,10 @@ pub fn handle_normal_mode(
                                 .iter()
                                 .filter(|row| {
                                     row.iter().any(|cell| {
-                                        tab.data.resolve(cell).to_lowercase().contains(&filter_lower)
+                                        tab.data
+                                            .resolve(cell)
+                                            .to_lowercase()
+                                            .contains(&filter_lower)
                                     })
                                 })
                                 .collect()

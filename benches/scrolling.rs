@@ -25,7 +25,11 @@ fn create_test_table_with_filter(num_rows: usize, num_cols: usize) -> TableData 
         })
         .collect();
 
-    TableData { headers, rows, interner }
+    TableData {
+        headers,
+        rows,
+        interner,
+    }
 }
 
 /// Benchmark row filtering performance (search/filter operations).
