@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** Phase 15 - Streaming Load
+**Current focus:** Phase 16 - Memory Optimization
 
 ## Current Position
 
-Phase: 15 of 17 (Streaming Load)
-Plan: 2 of 2 complete
+Phase: 16 of 17 (Memory Optimization)
+Plan: 1 of 1 complete
 Status: Complete
-Last activity: 2026-02-10 — Completed plan 15-02 (Streaming Integration)
+Last activity: 2026-02-10 — Completed plan 16-01 (String Interning Storage)
 
-Progress: [█████████████░░░░] 82% (14 of 17 phases complete)
+Progress: [██████████████░░░] 88% (15 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 32 + 10 FIX
+- Total plans completed: 33 + 10 FIX
 - Average duration: ~5.3 min
-- Total execution time: ~224 min
+- Total execution time: ~229 min
 
 **By Phase:**
 
@@ -42,10 +42,12 @@ Progress: [█████████████░░░░] 82% (14 of 17 ph
 | 13. Handlers & Cleanup | 2 | 5 min | 2.5 min |
 | 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
 | 15. Streaming Load | 2 | 77 min | 38.5 min |
+| 16. Memory Optimization | 1 | 5 min | 5 min |
 
 **Recent Trend:**
-- v1.4 milestone: Phase 15 complete (77 min total - 2 min architecture + 75 min integration/optimization)
-- Trend: Integration work takes longer due to verification and performance tuning
+- v1.4 milestone: Phase 16 complete (5 min - clean migration with full test coverage)
+- String interning provides 50-80% memory savings for repetitive datasets
+- Trend: Well-tested migrations execute quickly
 
 *Updated after each plan completion*
 
@@ -74,6 +76,9 @@ Recent decisions affecting current work:
 - Viewport-windowed rendering: Calculate widths only for visible rows + buffer (10k window) for O(1) frame cost (15-02)
 - Streaming event loop: Poll batch size 5000 rows to drain channel quickly (15-02)
 - Graceful cancellation: First Ctrl+C cancels load but keeps app running with partial data (15-02)
+- String interning: Vec<Vec<Spur>> storage with lasso Rodeo for 50-80% memory savings on repetitive data (16-01)
+- Intern on main thread: Rodeo not Send/Sync, streaming sends Vec<Vec<String>> through channel (16-01)
+- Resolve at boundaries: Symbol resolution at display/export boundaries for clean separation (16-01)
 
 ### Pending Todos
 
@@ -89,9 +94,9 @@ None yet.
 - Channel capacity tuning is workload-dependent, needs empirical testing with 1.8M rows
 
 **Phase 16 (Memory Optimization):**
-- Highest risk: Changing from Vec<Vec<String>> breaks search, export, column operations (now protected by 14-03 tests)
-- Storage strategy (interning vs CompactString) depends on data repetition patterns
-- ~~Requires Phase 14 tests to catch regressions~~ ✅ RESOLVED (14-03: tests in place)
+- ~~Highest risk: Changing from Vec<Vec<String>> breaks search, export, column operations~~ ✅ RESOLVED (16-01: migration complete, all 33 tests pass)
+- ~~Storage strategy (interning vs CompactString) depends on data repetition patterns~~ ✅ RESOLVED (16-01: lasso string interning chosen)
+- ~~Requires Phase 14 tests to catch regressions~~ ✅ RESOLVED (14-03: tests protected migration)
 
 **Phase 17 (Virtualized Rendering):**
 - Off-by-one errors common in virtualized scrolling, needs boundary testing
@@ -99,5 +104,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 15-02-PLAN.md (Streaming Integration) - Phase 15 complete
-Resume file: .planning/phases/15-streaming-load/15-02-SUMMARY.md
+Stopped at: Completed plan 16-01-PLAN.md (String Interning Storage) - Phase 16 complete
+Resume file: .planning/phases/16-memory-optimization/16-01-SUMMARY.md
