@@ -374,16 +374,29 @@ fn main() -> io::Result<()> {
             }
         }
 
-        // Build render data for panes
+        // Update cached widths for tabs being rendered (incremental, O(new_rows))
+        if let Some(tab) = workspace.tabs.get_mut(workspace.active_idx) {
+            tab.update_cached_widths();
+        }
+        if is_split {
+            if let Some(tab) = workspace.tabs.get_mut(workspace.split_idx) {
+                tab.update_cached_widths();
+            }
+        }
+
+        // Build render data for panes (viewport-windowed to avoid cloning all rows)
+        let viewport_height = crossterm::terminal::size()
+            .map(|(_, h)| h as usize)
+            .unwrap_or(50);
         let left_pane_data = workspace
             .tabs
             .get(workspace.active_idx)
-            .map(build_pane_render_data);
+            .map(|tab| build_pane_render_data(tab, viewport_height));
         let right_pane_data = if is_split {
             workspace
                 .tabs
                 .get(workspace.split_idx)
-                .map(build_pane_render_data)
+                .map(|tab| build_pane_render_data(tab, viewport_height))
         } else {
             None
         };
@@ -451,6 +464,32 @@ fn main() -> io::Result<()> {
         } else {
             TableState::default()
         };
+
+        // Adjust table states for viewport windowing (translate absolute → relative)
+        let left_viewport_offset = left_pane_data
+            .as_ref()
+            .map(|p| p.viewport_row_offset)
+            .unwrap_or(0);
+        let right_viewport_offset = right_pane_data
+            .as_ref()
+            .map(|p| p.viewport_row_offset)
+            .unwrap_or(0);
+        if left_viewport_offset > 0 {
+            if let Some(sel) = left_table_state.selected() {
+                left_table_state.select(Some(sel.saturating_sub(left_viewport_offset)));
+            }
+            *left_table_state.offset_mut() = left_table_state
+                .offset()
+                .saturating_sub(left_viewport_offset);
+        }
+        if right_viewport_offset > 0 {
+            if let Some(sel) = right_table_state.selected() {
+                right_table_state.select(Some(sel.saturating_sub(right_viewport_offset)));
+            }
+            *right_table_state.offset_mut() = right_table_state
+                .offset()
+                .saturating_sub(right_viewport_offset);
+        }
 
         terminal.draw(|frame| {
             let area = frame.area();
@@ -621,6 +660,20 @@ fn main() -> io::Result<()> {
                 render_format_prompt(frame, chunks[1]);
             }
         })?;
+
+        // Translate table states back from viewport-relative to absolute
+        if left_viewport_offset > 0 {
+            if let Some(sel) = left_table_state.selected() {
+                left_table_state.select(Some(sel + left_viewport_offset));
+            }
+            *left_table_state.offset_mut() += left_viewport_offset;
+        }
+        if right_viewport_offset > 0 {
+            if let Some(sel) = right_table_state.selected() {
+                right_table_state.select(Some(sel + right_viewport_offset));
+            }
+            *right_table_state.offset_mut() += right_viewport_offset;
+        }
 
         // Sync table states back to workspace
         if let Some(tab) = workspace.tabs.get_mut(workspace.active_idx) {

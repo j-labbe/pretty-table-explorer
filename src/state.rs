@@ -57,4 +57,6 @@ pub struct PaneRenderData {
     pub hidden_count: usize,
     /// Selected row
     pub selected_row: Option<usize>,
+    /// Viewport row offset (first row index relative to full filtered dataset)
+    pub viewport_row_offset: usize,
 }

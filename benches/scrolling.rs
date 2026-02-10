@@ -41,7 +41,7 @@ fn bench_row_filtering(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("rows", num_rows), &tab, |b, tab| {
             b.iter(|| {
                 // build_pane_render_data performs the filtering internally
-                let render_data = build_pane_render_data(black_box(tab));
+                let render_data = build_pane_render_data(black_box(tab), usize::MAX);
                 black_box(render_data)
             });
         });

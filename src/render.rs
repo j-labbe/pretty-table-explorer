@@ -60,35 +60,71 @@ pub fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<
 }
 
 /// Build render data for a tab.
-pub fn build_pane_render_data(tab: &Tab) -> PaneRenderData {
-    // Calculate widths using tab's data and config
-    let widths = calculate_widths(&tab.data, Some(&tab.column_config));
+/// `viewport_height` controls how many rows around the selected row are included.
+/// Pass `usize::MAX` to include all rows (used in tests/benchmarks).
+pub fn build_pane_render_data(tab: &Tab, viewport_height: usize) -> PaneRenderData {
+    // Use cached widths if available (incremental), otherwise compute fresh
+    let auto_widths = if !tab.cached_auto_widths.is_empty() {
+        tab.cached_auto_widths.clone()
+    } else {
+        calculate_auto_widths(&tab.data)
+    };
+
+    let widths: Vec<Constraint> = auto_widths
+        .iter()
+        .enumerate()
+        .map(|(i, &w)| {
+            if let Some(override_width) = tab.column_config.get_width(i) {
+                Constraint::Length(override_width)
+            } else {
+                Constraint::Length(w)
+            }
+        })
+        .collect();
 
     // Get visible column indices
     let visible_cols = tab.column_config.visible_indices();
     let visible_count = tab.column_config.visible_count();
     let hidden_count = tab.data.headers.len() - visible_count;
 
-    // Calculate filtered rows
-    let filter_lower = tab.filter_text.to_lowercase();
-    let display_rows: Vec<Vec<String>> = if tab.filter_text.is_empty() {
-        tab.data.rows.clone()
+    let selected = tab.table_state.selected().unwrap_or(0);
+    let buffer = viewport_height.saturating_mul(2);
+
+    // Calculate filtered rows with viewport windowing
+    let (display_rows, displayed_row_count, viewport_row_offset) = if tab.filter_text.is_empty() {
+        let total = tab.data.rows.len();
+        let start = selected.saturating_sub(buffer);
+        let end = selected.saturating_add(buffer).min(total);
+        let rows = tab.data.rows[start..end].to_vec();
+        (rows, total, start)
     } else {
-        tab.data
+        let filter_lower = tab.filter_text.to_lowercase();
+        // Collect matching indices (scan only, no clone)
+        let filtered_indices: Vec<usize> = tab
+            .data
             .rows
             .iter()
-            .filter(|row| {
+            .enumerate()
+            .filter(|(_, row)| {
                 row.iter()
                     .any(|cell| cell.to_lowercase().contains(&filter_lower))
             })
-            .cloned()
-            .collect()
+            .map(|(i, _)| i)
+            .collect();
+        let total = filtered_indices.len();
+        let start = selected.saturating_sub(buffer);
+        let end = selected.saturating_add(buffer).min(total);
+        let rows: Vec<Vec<String>> = filtered_indices[start..end]
+            .iter()
+            .map(|&i| tab.data.rows[i].clone())
+            .collect();
+        (rows, total, start)
     };
 
     PaneRenderData {
         name: tab.name.clone(),
         total_rows: tab.data.rows.len(),
-        displayed_row_count: display_rows.len(),
+        displayed_row_count,
         display_rows,
         headers: tab.data.headers.clone(),
         visible_cols,
@@ -99,6 +135,7 @@ pub fn build_pane_render_data(tab: &Tab) -> PaneRenderData {
         visible_count,
         hidden_count,
         selected_row: tab.table_state.selected(),
+        viewport_row_offset,
     }
 }
 

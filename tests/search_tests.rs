@@ -34,7 +34,7 @@ fn test_parse_and_filter_matching_rows() {
     tab.filter_text = "alice".to_string();
 
     // Build render data and check filtered results
-    let render_data = build_pane_render_data(&tab);
+    let render_data = build_pane_render_data(&tab, usize::MAX);
 
     assert_eq!(render_data.displayed_row_count, 2, "Should match 2 rows containing 'alice'");
     assert_eq!(render_data.total_rows, 10, "Total rows should be 10");
@@ -48,7 +48,7 @@ fn test_filter_case_insensitive() {
     // Search for lowercase "alice" should match uppercase "Alice" in row 1
     tab.filter_text = "alice".to_string();
 
-    let render_data = build_pane_render_data(&tab);
+    let render_data = build_pane_render_data(&tab, usize::MAX);
 
     assert_eq!(render_data.displayed_row_count, 2, "Case-insensitive search should match both 'Alice' and 'alice'");
 
@@ -68,7 +68,7 @@ fn test_filter_no_matches() {
     let mut tab = Tab::new("Test".to_string(), table_data, ViewMode::PipeData);
     tab.filter_text = "zzzznonexistent".to_string();
 
-    let render_data = build_pane_render_data(&tab);
+    let render_data = build_pane_render_data(&tab, usize::MAX);
 
     assert_eq!(render_data.displayed_row_count, 0, "Filter with no matches should return 0 rows");
     assert_eq!(render_data.display_rows.len(), 0);
@@ -81,7 +81,7 @@ fn test_filter_empty_string() {
     let mut tab = Tab::new("Test".to_string(), table_data, ViewMode::PipeData);
     tab.filter_text = "".to_string();
 
-    let render_data = build_pane_render_data(&tab);
+    let render_data = build_pane_render_data(&tab, usize::MAX);
 
     assert_eq!(render_data.displayed_row_count, 10, "Empty filter should return all rows");
     assert_eq!(render_data.total_rows, 10);
@@ -95,7 +95,7 @@ fn test_filter_partial_match() {
     // Filter "ali" should match "Alice" and "alice"
     tab.filter_text = "ali".to_string();
 
-    let render_data = build_pane_render_data(&tab);
+    let render_data = build_pane_render_data(&tab, usize::MAX);
 
     assert_eq!(render_data.displayed_row_count, 2, "Partial match 'ali' should match 'Alice' and 'alice'");
 }
@@ -148,7 +148,7 @@ fn test_filter_matches_any_column() {
     // Filter by city name - should match across different columns
     tab.filter_text = "seattle".to_string();
 
-    let render_data = build_pane_render_data(&tab);
+    let render_data = build_pane_render_data(&tab, usize::MAX);
 
     assert_eq!(render_data.displayed_row_count, 1, "Should match 1 row with 'Seattle'");
     assert!(render_data.display_rows[0].iter().any(|cell|
@@ -164,7 +164,7 @@ fn test_filter_with_numbers() {
     // Filter by age
     tab.filter_text = "30".to_string();
 
-    let render_data = build_pane_render_data(&tab);
+    let render_data = build_pane_render_data(&tab, usize::MAX);
 
     // Should match row with age 30
     assert!(render_data.displayed_row_count >= 1, "Should match at least one row with '30'");

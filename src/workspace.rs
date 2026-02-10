@@ -36,13 +36,17 @@ pub struct Tab {
     pub selected_visible_col: usize,
     /// View mode for this tab (determines available controls)
     pub view_mode: ViewMode,
+    /// Cached auto-calculated column widths (updated incrementally)
+    pub cached_auto_widths: Vec<u16>,
+    /// Number of rows scanned for cached widths
+    pub widths_cached_for_rows: usize,
 }
 
 impl Tab {
     /// Create a new tab with the given name, data, and view mode.
     pub fn new(name: String, data: TableData, view_mode: ViewMode) -> Self {
         let num_cols = data.headers.len();
-        Self {
+        let mut tab = Self {
             name,
             data,
             column_config: ColumnConfig::new(num_cols),
@@ -51,6 +55,37 @@ impl Tab {
             scroll_col_offset: 0,
             selected_visible_col: 0,
             view_mode,
+            cached_auto_widths: Vec::new(),
+            widths_cached_for_rows: 0,
+        };
+        tab.update_cached_widths();
+        tab
+    }
+
+    /// Incrementally update cached column widths.
+    /// Only scans rows added since the last call.
+    pub fn update_cached_widths(&mut self) {
+        let num_cols = self.data.headers.len();
+        if self.cached_auto_widths.is_empty() {
+            self.cached_auto_widths = vec![0u16; num_cols];
+            for (i, header) in self.data.headers.iter().enumerate() {
+                self.cached_auto_widths[i] = (header.len() + 1) as u16;
+            }
+        }
+        let start = self.widths_cached_for_rows;
+        let end = self.data.rows.len();
+        if start < end {
+            for row in &self.data.rows[start..end] {
+                for (i, cell) in row.iter().enumerate() {
+                    if i < num_cols {
+                        let w = (cell.len() + 1) as u16;
+                        if w > self.cached_auto_widths[i] {
+                            self.cached_auto_widths[i] = w;
+                        }
+                    }
+                }
+            }
+            self.widths_cached_for_rows = end;
         }
     }
 }
