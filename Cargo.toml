@@ -16,6 +16,18 @@ path = "src/lib.rs"
 name = "pte"
 path = "src/main.rs"
 
+[[bench]]
+name = "parsing"
+harness = false
+
+[[bench]]
+name = "rendering"
+harness = false
+
+[[bench]]
+name = "scrolling"
+harness = false
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 crossterm = { version = "0.28", features = ["use-dev-tty"] }
