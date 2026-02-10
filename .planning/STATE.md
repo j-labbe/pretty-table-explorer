@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Clean table rendering with proper column alignment — no wrapping, no spacing issues, just readable data.
-**Current focus:** Phase 14 - Profiling Infrastructure
+**Current focus:** Phase 15 - Streaming Load
 
 ## Current Position
 
-Phase: 14 of 17 (Profiling Infrastructure)
-Plan: 3 of 3 complete
-Status: Complete
-Last activity: 2026-02-10 — Completed plan 14-02 (Criterion Benchmarks)
+Phase: 15 of 17 (Streaming Load)
+Plan: 1 of 2 complete
+Status: In Progress
+Last activity: 2026-02-10 — Completed plan 15-01 (Streaming Parser Foundation)
 
 Progress: [████████████░░░░░] 76% (13 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 30 + 10 FIX
-- Average duration: ~4.7 min
-- Total execution time: ~147 min
+- Total plans completed: 31 + 10 FIX
+- Average duration: ~4.6 min
+- Total execution time: ~149 min
 
 **By Phase:**
 
@@ -41,10 +41,11 @@ Progress: [████████████░░░░░] 76% (13 of 17 ph
 | 12. UI Layer Extraction | 2 | 5 min | 2.5 min |
 | 13. Handlers & Cleanup | 2 | 5 min | 2.5 min |
 | 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
+| 15. Streaming Load | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- v1.4 milestone started: Foundation work fast (2.8 min)
-- Trend: Quick setup for infrastructure work
+- v1.4 milestone: Fast execution on foundational work (2 min for streaming architecture)
+- Trend: Infrastructure setup remains efficient
 
 *Updated after each plan completion*
 
@@ -66,6 +67,10 @@ Recent decisions affecting current work:
 - Cross-module test pattern: test_column_visibility_with_export validates column->export integration (14-03)
 - Criterion benchmarks: Parsing (4 row sizes + 4 col sizes), rendering (width calc + render data), scrolling (filtering + column ops) (14-02)
 - Benchmark parameterization: 100-100k rows for regression detection, ~10% filter match rate for realistic scenarios (14-02)
+- Streaming architecture: Background thread + mpsc channel for non-blocking data load (15-01)
+- Unbounded channel: Memory pressure addressed in Phase 16, sender must never block (15-01)
+- Incremental parsing: parse_psql_header() and parse_psql_line() for line-by-line streaming (15-01)
+- Batch size 1000 rows: Balances channel overhead vs per-message memory (15-01)
 
 ### Pending Todos
 
@@ -91,5 +96,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 14-02-PLAN.md (Criterion Benchmarks)
-Resume file: .planning/phases/14-profiling-infrastructure/14-02-SUMMARY.md
+Stopped at: Completed plan 15-01-PLAN.md (Streaming Parser Foundation)
+Resume file: .planning/phases/15-streaming-load/15-01-SUMMARY.md
