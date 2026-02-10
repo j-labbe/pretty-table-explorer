@@ -114,10 +114,11 @@ Plans:
   1. User can load 1.8M row dataset with less than 1GB memory usage (down from ~2GB)
   2. User sees current memory usage displayed in the status bar
   3. Search, export, and column operations work correctly with new storage (no regressions)
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 16-01: TBD
+- [ ] 16-01-PLAN.md — String interning migration (lasso crate, Vec<Vec<Spur>> storage)
+- [ ] 16-02-PLAN.md — Memory tracking display (sysinfo crate, status bar RSS)
 
 ### Phase 17: Virtualized Rendering
 **Goal**: Smooth scrolling through massive datasets via viewport optimization
@@ -151,7 +152,7 @@ Plans:
 | 13. Handlers & Cleanup | v1.3 | 2/2 | Complete | 2026-01-20 |
 | 14. Profiling Infrastructure | v1.4 | 3/3 | Complete | 2026-02-10 |
 | 15. Streaming Load | v1.4 | 2/2 | Complete | 2026-02-10 |
-| 16. Memory Optimization | v1.4 | 0/TBD | Not started | - |
+| 16. Memory Optimization | v1.4 | 0/2 | Not started | - |
 | 17. Virtualized Rendering | v1.4 | 0/TBD | Not started | - |
 
 ## Domain Expertise
