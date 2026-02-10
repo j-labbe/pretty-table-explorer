@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 16 of 17 (Memory Optimization)
-Plan: 1 of 1 complete
+Plan: 2 of 2 complete
 Status: Complete
-Last activity: 2026-02-10 — Completed plan 16-01 (String Interning Storage)
+Last activity: 2026-02-10 — Completed plan 16-02 (Memory Tracking Display)
 
-Progress: [██████████████░░░] 88% (15 of 17 phases complete)
+Progress: [████████████████░] 94% (16 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 33 + 10 FIX
-- Average duration: ~5.3 min
-- Total execution time: ~229 min
+- Total plans completed: 34 + 10 FIX
+- Average duration: ~5.2 min
+- Total execution time: ~231 min
 
 **By Phase:**
 
@@ -42,11 +42,12 @@ Progress: [██████████████░░░] 88% (15 of 17 ph
 | 13. Handlers & Cleanup | 2 | 5 min | 2.5 min |
 | 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
 | 15. Streaming Load | 2 | 77 min | 38.5 min |
-| 16. Memory Optimization | 1 | 5 min | 5 min |
+| 16. Memory Optimization | 2 | 7 min | 3.5 min |
 
 **Recent Trend:**
-- v1.4 milestone: Phase 16 complete (5 min - clean migration with full test coverage)
+- v1.4 milestone: Phase 16 complete (7 min total - memory optimization with monitoring)
 - String interning provides 50-80% memory savings for repetitive datasets
+- Memory tracking in status bar validates optimization results
 - Trend: Well-tested migrations execute quickly
 
 *Updated after each plan completion*
@@ -79,6 +80,7 @@ Recent decisions affecting current work:
 - String interning: Vec<Vec<Spur>> storage with lasso Rodeo for 50-80% memory savings on repetitive data (16-01)
 - Intern on main thread: Rodeo not Send/Sync, streaming sends Vec<Vec<String>> through channel (16-01)
 - Resolve at boundaries: Symbol resolution at display/export boundaries for clean separation (16-01)
+- Memory tracking: sysinfo displays RSS in MB in status bar, refreshed every 30 frames for zero performance impact (16-02)
 
 ### Pending Todos
 
@@ -97,6 +99,7 @@ None yet.
 - ~~Highest risk: Changing from Vec<Vec<String>> breaks search, export, column operations~~ ✅ RESOLVED (16-01: migration complete, all 33 tests pass)
 - ~~Storage strategy (interning vs CompactString) depends on data repetition patterns~~ ✅ RESOLVED (16-01: lasso string interning chosen)
 - ~~Requires Phase 14 tests to catch regressions~~ ✅ RESOLVED (14-03: tests protected migration)
+- ✅ COMPLETE (16-02: memory tracking in status bar shows RSS, validates interning savings)
 
 **Phase 17 (Virtualized Rendering):**
 - Off-by-one errors common in virtualized scrolling, needs boundary testing
@@ -104,5 +107,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 16-01-PLAN.md (String Interning Storage) - Phase 16 complete
-Resume file: .planning/phases/16-memory-optimization/16-01-SUMMARY.md
+Stopped at: Completed plan 16-02-PLAN.md (Memory Tracking Display) - Phase 16 complete
+Resume file: .planning/phases/16-memory-optimization/16-02-SUMMARY.md
