@@ -121,8 +121,8 @@ fn test_parse_single_row() {
     assert_eq!(table_data.headers[0], "id");
     assert_eq!(table_data.headers[1], "name");
     assert_eq!(table_data.rows.len(), 1);
-    assert_eq!(table_data.rows[0][0], "1");
-    assert_eq!(table_data.rows[0][1], "Test");
+    assert_eq!(table_data.resolve(&table_data.rows[0][0]), "1");
+    assert_eq!(table_data.resolve(&table_data.rows[0][1]), "Test");
 }
 
 #[test]
@@ -135,7 +135,11 @@ fn test_parse_multiline_psql() {
     // Verify footer is not in the data
     for row in &table_data.rows {
         for cell in row {
-            assert!(!cell.contains("(10 rows)"), "Footer should not appear in data rows");
+            let cell_str = table_data.resolve(cell);
+            assert!(
+                !cell_str.contains("(10 rows)"),
+                "Footer should not appear in data rows"
+            );
         }
     }
 }

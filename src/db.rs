@@ -41,15 +41,18 @@ pub fn execute_query(
         Vec::new()
     };
 
-    // Convert rows to string vectors
-    let data_rows: Vec<Vec<String>> = rows
+    // Convert rows to string vectors and intern
+    use lasso::Rodeo;
+    let mut interner = Rodeo::default();
+    let data_rows: Vec<Vec<lasso::Spur>> = rows
         .iter()
         .map(|row| {
             (0..row.columns().len())
                 .map(|i| {
                     // Try to get value as string, handling NULL values
                     // postgres crate allows getting most types as String via Display
-                    row.try_get::<_, Option<String>>(i)
+                    let value = row
+                        .try_get::<_, Option<String>>(i)
                         .ok()
                         .flatten()
                         .unwrap_or_else(|| {
@@ -77,7 +80,8 @@ pub fn execute_query(
                                         .map(|v| v.to_string())
                                 })
                                 .unwrap_or_else(|| "NULL".to_string())
-                        })
+                        });
+                    interner.get_or_intern(value)
                 })
                 .collect()
         })
@@ -86,5 +90,6 @@ pub fn execute_query(
     Ok(TableData {
         headers,
         rows: data_rows,
+        interner,
     })
 }

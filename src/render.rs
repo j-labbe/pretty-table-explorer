@@ -28,7 +28,7 @@ pub fn calculate_auto_widths(data: &TableData) -> Vec<u16> {
     for row in &data.rows {
         for (i, cell) in row.iter().enumerate() {
             if i < num_cols {
-                widths[i] = widths[i].max(cell.len());
+                widths[i] = widths[i].max(data.resolve(cell).len());
             }
         }
     }
@@ -95,7 +95,15 @@ pub fn build_pane_render_data(tab: &Tab, viewport_height: usize) -> PaneRenderDa
         let total = tab.data.rows.len();
         let start = selected.saturating_sub(buffer);
         let end = selected.saturating_add(buffer).min(total);
-        let rows = tab.data.rows[start..end].to_vec();
+        // Resolve symbols to strings for PaneRenderData
+        let rows: Vec<Vec<String>> = tab.data.rows[start..end]
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|s| tab.data.resolve(s).to_string())
+                    .collect()
+            })
+            .collect();
         (rows, total, start)
     } else {
         let filter_lower = tab.filter_text.to_lowercase();
@@ -107,7 +115,7 @@ pub fn build_pane_render_data(tab: &Tab, viewport_height: usize) -> PaneRenderDa
             .enumerate()
             .filter(|(_, row)| {
                 row.iter()
-                    .any(|cell| cell.to_lowercase().contains(&filter_lower))
+                    .any(|cell| tab.data.resolve(cell).to_lowercase().contains(&filter_lower))
             })
             .map(|(i, _)| i)
             .collect();
@@ -116,7 +124,12 @@ pub fn build_pane_render_data(tab: &Tab, viewport_height: usize) -> PaneRenderDa
         let end = selected.saturating_add(buffer).min(total);
         let rows: Vec<Vec<String>> = filtered_indices[start..end]
             .iter()
-            .map(|&i| tab.data.rows[i].clone())
+            .map(|&i| {
+                tab.data.rows[i]
+                    .iter()
+                    .map(|s| tab.data.resolve(s).to_string())
+                    .collect()
+            })
             .collect();
         (rows, total, start)
     };

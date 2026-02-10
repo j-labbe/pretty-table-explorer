@@ -187,6 +187,7 @@ fn main() -> io::Result<()> {
                     let initial_data = parser::TableData {
                         headers: loader.headers().to_vec(),
                         rows: Vec::with_capacity(100_000),
+                        interner: lasso::Rodeo::default(),
                     };
                     // Return data + loader as Option for event loop to poll
                     (initial_data, None, ViewMode::PipeData, Some(loader))
@@ -262,7 +263,8 @@ fn main() -> io::Result<()> {
                         let additional = (new_total - tab.data.rows.capacity()).max(50_000);
                         tab.data.rows.reserve(additional);
                     }
-                    tab.data.rows.extend(new_rows);
+                    // Intern strings on main thread before appending
+                    tab.intern_and_append_rows(new_rows);
                 }
             }
 
@@ -276,7 +278,7 @@ fn main() -> io::Result<()> {
                 } else {
                     // Still draining, append these rows too
                     if let Some(tab) = workspace.tabs.get_mut(0) {
-                        tab.data.rows.extend(remaining);
+                        tab.intern_and_append_rows(remaining);
                     }
                 }
             }

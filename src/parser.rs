@@ -1,10 +1,13 @@
+use lasso::{Rodeo, Spur};
+
 /// Represents parsed table data from psql output.
-#[derive(Debug, Clone)]
 pub struct TableData {
     /// Column headers from the first row
     pub headers: Vec<String>,
-    /// Data rows (each row is a vector of cell values)
-    pub rows: Vec<Vec<String>>,
+    /// Data rows (each row is a vector of interned symbols)
+    pub rows: Vec<Vec<Spur>>,
+    /// String interner for this table's data
+    pub interner: Rodeo,
 }
 
 impl TableData {
@@ -18,6 +21,50 @@ impl TableData {
     #[allow(dead_code)]
     pub fn row_count(&self) -> usize {
         self.rows.len()
+    }
+
+    /// Resolve a Spur symbol to its string value.
+    pub fn resolve(&self, spur: &Spur) -> &str {
+        self.interner.resolve(spur)
+    }
+
+    /// Resolve all symbols in a row to owned Strings.
+    /// Used for export operations.
+    #[allow(dead_code)]
+    pub fn resolve_row(&self, row: &[Spur]) -> Vec<String> {
+        row.iter().map(|s| self.resolve(s).to_string()).collect()
+    }
+}
+
+impl Clone for TableData {
+    fn clone(&self) -> Self {
+        let mut new_interner = Rodeo::default();
+        let new_rows: Vec<Vec<Spur>> = self
+            .rows
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|spur| {
+                        let s = self.interner.resolve(spur);
+                        new_interner.get_or_intern(s)
+                    })
+                    .collect()
+            })
+            .collect();
+        TableData {
+            headers: self.headers.clone(),
+            rows: new_rows,
+            interner: new_interner,
+        }
+    }
+}
+
+impl std::fmt::Debug for TableData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TableData")
+            .field("headers", &self.headers)
+            .field("rows_count", &self.rows.len())
+            .finish()
     }
 }
 
@@ -136,7 +183,8 @@ pub fn parse_psql(input: &str) -> Option<TableData> {
     }
 
     // Parse data rows (everything after separator until footer)
-    let mut rows: Vec<Vec<String>> = Vec::new();
+    let mut interner = Rodeo::default();
+    let mut rows: Vec<Vec<Spur>> = Vec::new();
 
     for line in lines.iter().skip(separator_idx + 1) {
         let trimmed = line.trim();
@@ -151,13 +199,20 @@ pub fn parse_psql(input: &str) -> Option<TableData> {
             break;
         }
 
-        // Parse row by splitting on |
-        let row: Vec<String> = line.split('|').map(|s| s.trim().to_string()).collect();
+        // Parse row by splitting on | and interning each cell
+        let row: Vec<Spur> = line
+            .split('|')
+            .map(|s| interner.get_or_intern(s.trim()))
+            .collect();
 
         rows.push(row);
     }
 
-    Some(TableData { headers, rows })
+    Some(TableData {
+        headers,
+        rows,
+        interner,
+    })
 }
 
 #[cfg(test)]
@@ -179,8 +234,19 @@ mod tests {
         assert_eq!(table.headers, vec!["id", "name", "age"]);
         assert_eq!(table.row_count(), 2);
         assert_eq!(table.column_count(), 3);
-        assert_eq!(table.rows[0], vec!["1", "Alice", "30"]);
-        assert_eq!(table.rows[1], vec!["2", "Bob", "25"]);
+
+        // Resolve symbols to compare with expected strings
+        let row0: Vec<String> = table.rows[0]
+            .iter()
+            .map(|s| table.resolve(s).to_string())
+            .collect();
+        assert_eq!(row0, vec!["1", "Alice", "30"]);
+
+        let row1: Vec<String> = table.rows[1]
+            .iter()
+            .map(|s| table.resolve(s).to_string())
+            .collect();
+        assert_eq!(row1, vec!["2", "Bob", "25"]);
     }
 
     #[test]
@@ -196,7 +262,12 @@ mod tests {
         let table = result.unwrap();
         assert_eq!(table.headers, vec!["a", "b"]);
         assert_eq!(table.row_count(), 1);
-        assert_eq!(table.rows[0], vec!["1", "2"]);
+
+        let row0: Vec<String> = table.rows[0]
+            .iter()
+            .map(|s| table.resolve(s).to_string())
+            .collect();
+        assert_eq!(row0, vec!["1", "2"]);
     }
 
     #[test]

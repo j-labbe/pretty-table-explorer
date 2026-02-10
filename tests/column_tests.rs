@@ -137,12 +137,25 @@ fn test_column_reset() {
 #[test]
 fn test_column_visibility_with_export() {
     // Create TableData
+    use lasso::Rodeo;
+    let mut interner = Rodeo::default();
     let data = TableData {
         headers: vec!["id".into(), "name".into(), "age".into(), "city".into()],
         rows: vec![
-            vec!["1".into(), "Alice".into(), "30".into(), "New York".into()],
-            vec!["2".into(), "Bob".into(), "25".into(), "Seattle".into()],
+            vec![
+                interner.get_or_intern("1"),
+                interner.get_or_intern("Alice"),
+                interner.get_or_intern("30"),
+                interner.get_or_intern("New York"),
+            ],
+            vec![
+                interner.get_or_intern("2"),
+                interner.get_or_intern("Bob"),
+                interner.get_or_intern("25"),
+                interner.get_or_intern("Seattle"),
+            ],
         ],
+        interner,
     };
 
     // Create ColumnConfig and hide column 2 (age)

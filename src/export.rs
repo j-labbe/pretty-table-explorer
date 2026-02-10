@@ -44,11 +44,16 @@ fn export_csv(data: &TableData, visible_cols: &[usize]) -> Result<String, String
 
     // Write data rows (only visible columns in order)
     for row in &data.rows {
-        let values: Vec<&str> = visible_cols
+        let values: Vec<String> = visible_cols
             .iter()
-            .map(|&i| row.get(i).map(|s| s.as_str()).unwrap_or(""))
+            .map(|&i| {
+                row.get(i)
+                    .map(|s| data.resolve(s).to_string())
+                    .unwrap_or_default()
+            })
             .collect();
-        wtr.write_record(&values)
+        let str_values: Vec<&str> = values.iter().map(|s| s.as_str()).collect();
+        wtr.write_record(&str_values)
             .map_err(|e| format!("Failed to write CSV row: {}", e))?;
     }
 
@@ -65,20 +70,24 @@ fn export_csv(data: &TableData, visible_cols: &[usize]) -> Result<String, String
 
 /// Export to JSON format (array of objects)
 fn export_json(data: &TableData, visible_cols: &[usize]) -> Result<String, String> {
-    let mut rows_json: Vec<HashMap<&str, &str>> = Vec::new();
+    let mut rows_json: Vec<HashMap<&str, String>> = Vec::new();
 
     for row in &data.rows {
-        let mut row_obj: HashMap<&str, &str> = HashMap::new();
+        let mut row_obj: HashMap<&str, String> = HashMap::new();
         for &col_idx in visible_cols {
             if let Some(header) = data.headers.get(col_idx) {
-                let value = row.get(col_idx).map(|s| s.as_str()).unwrap_or("");
+                let value = row
+                    .get(col_idx)
+                    .map(|s| data.resolve(s).to_string())
+                    .unwrap_or_default();
                 row_obj.insert(header.as_str(), value);
             }
         }
         rows_json.push(row_obj);
     }
 
-    serde_json::to_string_pretty(&rows_json).map_err(|e| format!("Failed to serialize JSON: {}", e))
+    serde_json::to_string_pretty(&rows_json)
+        .map_err(|e| format!("Failed to serialize JSON: {}", e))
 }
 
 /// Save content to a file
@@ -91,12 +100,24 @@ mod tests {
     use super::*;
 
     fn sample_table() -> TableData {
+        use lasso::Rodeo;
+        let mut interner = Rodeo::default();
+        let rows = vec![
+            vec![
+                interner.get_or_intern("1"),
+                interner.get_or_intern("Alice"),
+                interner.get_or_intern("30"),
+            ],
+            vec![
+                interner.get_or_intern("2"),
+                interner.get_or_intern("Bob"),
+                interner.get_or_intern("25"),
+            ],
+        ];
         TableData {
             headers: vec!["id".to_string(), "name".to_string(), "age".to_string()],
-            rows: vec![
-                vec!["1".to_string(), "Alice".to_string(), "30".to_string()],
-                vec!["2".to_string(), "Bob".to_string(), "25".to_string()],
-            ],
+            rows,
+            interner,
         }
     }
 
@@ -162,9 +183,11 @@ mod tests {
 
     #[test]
     fn test_export_empty_table() {
+        use lasso::Rodeo;
         let data = TableData {
             headers: vec!["col1".to_string()],
             rows: vec![],
+            interner: Rodeo::default(),
         };
         let visible = vec![0];
 

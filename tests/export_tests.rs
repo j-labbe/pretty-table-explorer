@@ -10,13 +10,29 @@ use std::collections::HashMap;
 
 /// Helper function to create sample table data
 fn sample_table() -> TableData {
+    use lasso::Rodeo;
+    let mut interner = Rodeo::default();
+    let rows = vec![
+        vec![
+            interner.get_or_intern("1"),
+            interner.get_or_intern("Alice"),
+            interner.get_or_intern("30"),
+        ],
+        vec![
+            interner.get_or_intern("2"),
+            interner.get_or_intern("Bob"),
+            interner.get_or_intern("25"),
+        ],
+        vec![
+            interner.get_or_intern("3"),
+            interner.get_or_intern("Charlie"),
+            interner.get_or_intern("35"),
+        ],
+    ];
     TableData {
         headers: vec!["id".into(), "name".into(), "age".into()],
-        rows: vec![
-            vec!["1".into(), "Alice".into(), "30".into()],
-            vec!["2".into(), "Bob".into(), "25".into()],
-            vec!["3".into(), "Charlie".into(), "35".into()],
-        ],
+        rows,
+        interner,
     }
 }
 
@@ -105,13 +121,28 @@ fn test_export_json_subset_columns() {
 #[test]
 fn test_export_csv_special_characters() {
     // Create data with commas, quotes, and newlines
+    use lasso::Rodeo;
+    let mut interner = Rodeo::default();
     let data = TableData {
         headers: vec!["id".into(), "description".into(), "notes".into()],
         rows: vec![
-            vec!["1".into(), "Value with, comma".into(), "Normal".into()],
-            vec!["2".into(), r#"Value with "quotes""#.into(), "Test".into()],
-            vec!["3".into(), "Value\nwith\nnewline".into(), "Multi".into()],
+            vec![
+                interner.get_or_intern("1"),
+                interner.get_or_intern("Value with, comma"),
+                interner.get_or_intern("Normal"),
+            ],
+            vec![
+                interner.get_or_intern("2"),
+                interner.get_or_intern(r#"Value with "quotes""#),
+                interner.get_or_intern("Test"),
+            ],
+            vec![
+                interner.get_or_intern("3"),
+                interner.get_or_intern("Value\nwith\nnewline"),
+                interner.get_or_intern("Multi"),
+            ],
         ],
+        interner,
     };
     let visible = vec![0, 1, 2];
 
@@ -131,9 +162,11 @@ fn test_export_csv_special_characters() {
 
 #[test]
 fn test_export_empty_table() {
+    use lasso::Rodeo;
     let data = TableData {
         headers: vec!["col1".into(), "col2".into()],
         rows: vec![],
+        interner: Rodeo::default(),
     };
     let visible = vec![0, 1];
 
@@ -179,12 +212,23 @@ fn test_export_single_column() {
 
 #[test]
 fn test_export_json_preserves_structure() {
+    use lasso::Rodeo;
+    let mut interner = Rodeo::default();
     let data = TableData {
         headers: vec!["user_id".into(), "username".into(), "score".into()],
         rows: vec![
-            vec!["100".into(), "player1".into(), "9500".into()],
-            vec!["200".into(), "player2".into(), "8750".into()],
+            vec![
+                interner.get_or_intern("100"),
+                interner.get_or_intern("player1"),
+                interner.get_or_intern("9500"),
+            ],
+            vec![
+                interner.get_or_intern("200"),
+                interner.get_or_intern("player2"),
+                interner.get_or_intern("8750"),
+            ],
         ],
+        interner,
     };
     let visible = vec![0, 1, 2];
 

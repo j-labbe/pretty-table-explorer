@@ -78,7 +78,7 @@ impl Tab {
             for row in &self.data.rows[start..end] {
                 for (i, cell) in row.iter().enumerate() {
                     if i < num_cols {
-                        let w = (cell.len() + 1) as u16;
+                        let w = (self.data.resolve(cell).len() + 1) as u16;
                         if w > self.cached_auto_widths[i] {
                             self.cached_auto_widths[i] = w;
                         }
@@ -86,6 +86,18 @@ impl Tab {
                 }
             }
             self.widths_cached_for_rows = end;
+        }
+    }
+
+    /// Intern and append string rows to the table.
+    /// Used for streaming data load from background thread.
+    pub fn intern_and_append_rows(&mut self, string_rows: Vec<Vec<String>>) {
+        for row in string_rows {
+            let interned_row: Vec<lasso::Spur> = row
+                .iter()
+                .map(|cell| self.data.interner.get_or_intern(cell.as_str()))
+                .collect();
+            self.data.rows.push(interned_row);
         }
     }
 }
@@ -255,12 +267,22 @@ mod tests {
     use super::*;
 
     fn sample_data() -> TableData {
+        use lasso::Rodeo;
+        let mut interner = Rodeo::default();
+        let rows = vec![
+            vec![
+                interner.get_or_intern("1"),
+                interner.get_or_intern("Alice"),
+            ],
+            vec![
+                interner.get_or_intern("2"),
+                interner.get_or_intern("Bob"),
+            ],
+        ];
         TableData {
             headers: vec!["id".to_string(), "name".to_string()],
-            rows: vec![
-                vec!["1".to_string(), "Alice".to_string()],
-                vec!["2".to_string(), "Bob".to_string()],
-            ],
+            rows,
+            interner,
         }
     }
 

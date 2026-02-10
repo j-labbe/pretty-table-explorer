@@ -81,20 +81,22 @@ pub fn handle_normal_mode(
                     if let Some(selected) = tab.table_state.selected() {
                         // Recalculate display_rows for event handling
                         let filter_lower = tab.filter_text.to_lowercase();
-                        let display_rows: Vec<&Vec<String>> = if tab.filter_text.is_empty() {
+                        let display_rows: Vec<&Vec<lasso::Spur>> = if tab.filter_text.is_empty() {
                             tab.data.rows.iter().collect()
                         } else {
                             tab.data
                                 .rows
                                 .iter()
                                 .filter(|row| {
-                                    row.iter()
-                                        .any(|cell| cell.to_lowercase().contains(&filter_lower))
+                                    row.iter().any(|cell| {
+                                        tab.data.resolve(cell).to_lowercase().contains(&filter_lower)
+                                    })
                                 })
                                 .collect()
                         };
                         if let Some(row) = display_rows.get(selected) {
-                            if let Some(tbl_name) = row.first() {
+                            if let Some(tbl_spur) = row.first() {
+                                let tbl_name = tab.data.resolve(tbl_spur).to_string();
                                 let query = format!("SELECT * FROM \"{}\" LIMIT 1000", tbl_name);
                                 match db::execute_query(client, &query) {
                                     Ok(data) => {
