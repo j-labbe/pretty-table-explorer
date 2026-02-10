@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 14 of 17 (Profiling Infrastructure)
-Plan: 1 of 3 complete
+Plan: 2 of 3 complete
 Status: In progress
-Last activity: 2026-02-10 — Completed plan 14-01 (Library Crate and Profiling Foundation)
+Last activity: 2026-02-10 — Completed plan 14-03 (Integration Tests for Regression Protection)
 
 Progress: [████████████░░░░░] 76% (13 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28 + 10 FIX
-- Average duration: ~4.0 min
-- Total execution time: ~128 min
+- Total plans completed: 29 + 10 FIX
+- Average duration: ~3.9 min
+- Total execution time: ~131 min
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Progress: [████████████░░░░░] 76% (13 of 17 ph
 | 11. Core Types Extraction | 1 | 2.5 min | 2.5 min |
 | 12. UI Layer Extraction | 2 | 5 min | 2.5 min |
 | 13. Handlers & Cleanup | 2 | 5 min | 2.5 min |
-| 14. Profiling Infrastructure | 1 | 2.8 min | 2.8 min |
+| 14. Profiling Infrastructure | 2 | 5.8 min | 2.9 min |
 
 **Recent Trend:**
 - v1.4 milestone started: Foundation work fast (2.8 min)
@@ -62,6 +62,8 @@ Recent decisions affecting current work:
 - Library crate pattern: All modules re-exported via src/lib.rs for external access (14-01)
 - Profile debug symbols: release uses line-tables-only, bench uses full debug for flamegraph support (14-01)
 - dhat heap profiling: Enabled via dhat-heap feature flag (14-01)
+- Integration test coverage: 33 tests (10 search + 9 export + 14 column) protect Phase 16 refactoring (14-03)
+- Cross-module test pattern: test_column_visibility_with_export validates column->export integration (14-03)
 
 ### Pending Todos
 
@@ -70,16 +72,16 @@ None yet.
 ### Blockers/Concerns
 
 **Phase 14 (Profiling Infrastructure):**
-- Must establish comprehensive integration tests before Phase 16 storage refactoring (highest risk phase)
-- Criterion benchmarks needed to detect performance regressions during optimization
+- ~~Must establish comprehensive integration tests before Phase 16 storage refactoring (highest risk phase)~~ ✅ RESOLVED (14-03: 33 integration tests created)
+- Criterion benchmarks needed to detect performance regressions during optimization (pending 14-02)
 
 **Phase 15 (Streaming Load):**
 - Channel capacity tuning is workload-dependent, needs empirical testing with 1.8M rows
 
 **Phase 16 (Memory Optimization):**
-- Highest risk: Changing from Vec<Vec<String>> breaks search, export, column operations
+- Highest risk: Changing from Vec<Vec<String>> breaks search, export, column operations (now protected by 14-03 tests)
 - Storage strategy (interning vs CompactString) depends on data repetition patterns
-- Requires Phase 14 tests to catch regressions
+- ~~Requires Phase 14 tests to catch regressions~~ ✅ RESOLVED (14-03: tests in place)
 
 **Phase 17 (Virtualized Rendering):**
 - Off-by-one errors common in virtualized scrolling, needs boundary testing
@@ -87,5 +89,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 14-01-PLAN.md (Library Crate and Profiling Foundation)
-Resume file: .planning/phases/14-profiling-infrastructure/14-01-SUMMARY.md
+Stopped at: Completed plan 14-03-PLAN.md (Integration Tests for Regression Protection)
+Resume file: .planning/phases/14-profiling-infrastructure/14-03-SUMMARY.md
