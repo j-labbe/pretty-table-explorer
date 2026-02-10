@@ -7,3 +7,4 @@ pub mod render;
 pub mod handlers;
 pub mod db;
 pub mod update;
+pub mod streaming;
