@@ -49,10 +49,10 @@ fn get_platform_asset_name() -> Result<String, String> {
 fn parse_version(version: &str) -> Option<(u32, u32, u32)> {
     let v = version.trim_start_matches('v');
     let parts: Vec<&str> = v.split('.').collect();
-    if parts.len() >= 3 {
+    if parts.len() >= 2 {
         let major = parts[0].parse().ok()?;
         let minor = parts[1].parse().ok()?;
-        let patch = parts[2].parse().ok()?;
+        let patch = parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0);
         Some((major, minor, patch))
     } else {
         None
@@ -257,6 +257,8 @@ mod tests {
         assert_eq!(parse_version("1.0.0"), Some((1, 0, 0)));
         assert_eq!(parse_version("v1.2.3"), Some((1, 2, 3)));
         assert_eq!(parse_version("0.10.5"), Some((0, 10, 5)));
+        assert_eq!(parse_version("v1.4"), Some((1, 4, 0)));
+        assert_eq!(parse_version("2.0"), Some((2, 0, 0)));
     }
 
     #[test]
@@ -267,6 +269,8 @@ mod tests {
         assert!(!is_newer_version("1.0.0", "1.0.0"));
         assert!(!is_newer_version("1.0.1", "1.0.0"));
         assert!(is_newer_version("1.0.0", "v1.0.1"));
+        assert!(is_newer_version("1.1.1", "v1.4"));
+        assert!(!is_newer_version("1.4.0", "v1.4"));
     }
 
     #[test]
