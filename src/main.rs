@@ -273,7 +273,7 @@ fn main() -> io::Result<()> {
     loop {
         // Refresh memory stats every ~30 frames (~1 second at ~30 FPS)
         frame_count += 1;
-        if frame_count % 30 == 0 {
+        if frame_count.is_multiple_of(30) {
             sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
             if let Some(process) = sys.process(pid) {
                 memory_mb = process.memory() / 1024 / 1024;

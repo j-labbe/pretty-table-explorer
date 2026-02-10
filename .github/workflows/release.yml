@@ -2,11 +2,8 @@ name: CI & Release
 
 on:
   push:
-    branches: [main, master]
     tags:
       - 'v*'
-  pull_request:
-    branches: [main, master]
 
 env:
   CARGO_TERM_COLOR: always
