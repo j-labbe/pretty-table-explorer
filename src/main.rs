@@ -246,18 +246,11 @@ fn main() -> io::Result<()> {
     #[allow(unused_assignments)]
     let mut displayed_row_count = 0;
 
-    // Track loading state for completion message
-    let mut prev_loading = false;
-
     // Main event loop
     loop {
         // Poll streaming loader for new rows
-        let mut is_loading = false;
-        let mut loaded_count: usize = 0;
+        let had_streaming_loader = streaming_loader.is_some();
         if let Some(ref loader) = streaming_loader {
-            is_loading = !loader.is_complete();
-            loaded_count = loader.total_rows_parsed();
-
             // Non-blocking receive of new rows
             let new_rows = loader.try_recv_batch(5000);
             if !new_rows.is_empty() {
@@ -289,12 +282,12 @@ fn main() -> io::Result<()> {
             }
         }
 
-        // Show loading completion message when transitioning from loading to complete
-        if prev_loading && !is_loading && streaming_loader.is_none() {
-            status_message = Some(format!("Loaded {} rows", loaded_count));
+        // Detect streaming completion (loader was present but just removed)
+        if had_streaming_loader && streaming_loader.is_none() {
+            let actual_rows = workspace.tabs.first().map(|t| t.data.rows.len()).unwrap_or(0);
+            status_message = Some(format!("Loaded {} rows", actual_rows));
             status_message_time = Some(Instant::now());
         }
-        prev_loading = is_loading;
 
         // Build tab bar string BEFORE getting mutable reference to tab
         let tab_bar = build_tab_bar(&workspace);
@@ -411,9 +404,10 @@ fn main() -> io::Result<()> {
             .map(|p| p.displayed_row_count)
             .unwrap_or(0);
 
-        // Show loading indicator as status message during streaming
-        if is_loading {
-            status_message = Some(format!("Loading... {} rows", loaded_count));
+        // Show loading indicator as status message while streaming loader is active
+        if streaming_loader.is_some() {
+            let actual_rows = workspace.tabs.first().map(|t| t.data.rows.len()).unwrap_or(0);
+            status_message = Some(format!("Loading... {} rows", actual_rows));
             // Don't set status_message_time -- we don't want it to auto-clear during loading
             status_message_time = None;
         }
