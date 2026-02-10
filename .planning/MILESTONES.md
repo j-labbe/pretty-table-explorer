@@ -137,3 +137,33 @@
 **Git range:** `feat(01-01)` → `feat(04-02)`
 
 ---
+
+## v1.4 Performance (Shipped: 2026-02-10)
+
+**Delivered:** Optimized PTE to handle million-row datasets with streaming load, memory-efficient storage, and smooth 30 FPS scrolling.
+
+**Phases completed:** 14-17 (4 phases, 9 plans, 12 tasks)
+
+**Key accomplishments:**
+
+- Profiling & benchmarking infrastructure: Criterion suites for parsing/rendering/scrolling, 33 integration tests, flamegraph + dhat support
+- Non-blocking streaming data load: background thread + mpsc channel, sub-second first display for 500K+ rows
+- String interning via lasso crate: Vec<Vec<Spur>> storage, 50-80% memory savings on repetitive data
+- Runtime memory monitoring: sysinfo RSS display in status bar, throttled refresh for zero performance impact
+- 30 FPS frame-rate-controlled event loop: needs_redraw idle optimization, 7.5x scroll responsiveness improvement
+- Viewport-windowed rendering: O(viewport) constant time (~75us for 1K-500K rows)
+
+**Stats:**
+
+- 41 files modified
+- 5,295 lines of Rust (total codebase)
+- +8,242 / -131 lines changed
+- 32 commits
+- 1 day (2026-02-10)
+
+**Git range:** `feat(14-01)` -> `feat(17-01)`
+
+**What's next:** Consider search optimization, incremental filtering, or v2.0 features
+
+---
+
