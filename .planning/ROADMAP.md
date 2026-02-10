@@ -117,8 +117,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 16-01-PLAN.md — String interning migration (lasso crate, Vec<Vec<Spur>> storage)
-- [ ] 16-02-PLAN.md — Memory tracking display (sysinfo crate, status bar RSS)
+- [x] 16-01-PLAN.md — String interning migration (lasso crate, Vec<Vec<Spur>> storage)
+- [x] 16-02-PLAN.md — Memory tracking display (sysinfo crate, status bar RSS)
 
 ### Phase 17: Virtualized Rendering
 **Goal**: Smooth scrolling through massive datasets via viewport optimization
@@ -152,7 +152,7 @@ Plans:
 | 13. Handlers & Cleanup | v1.3 | 2/2 | Complete | 2026-01-20 |
 | 14. Profiling Infrastructure | v1.4 | 3/3 | Complete | 2026-02-10 |
 | 15. Streaming Load | v1.4 | 2/2 | Complete | 2026-02-10 |
-| 16. Memory Optimization | v1.4 | 0/2 | Not started | - |
+| 16. Memory Optimization | v1.4 | 2/2 | Complete | 2026-02-10 |
 | 17. Virtualized Rendering | v1.4 | 0/TBD | Not started | - |
 
 ## Domain Expertise
