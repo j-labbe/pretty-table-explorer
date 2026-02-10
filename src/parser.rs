@@ -21,6 +21,76 @@ impl TableData {
     }
 }
 
+/// Parse psql header from the first few lines of output.
+///
+/// Returns `Some((headers, data_start_index))` where:
+/// - `headers` is the parsed column names
+/// - `data_start_index` is the line index after the separator where data rows begin
+///
+/// Returns `None` if headers or separator are missing/malformed.
+pub fn parse_psql_header(lines: &[&str]) -> Option<(Vec<String>, usize)> {
+    if lines.is_empty() {
+        return None;
+    }
+
+    // Find the first non-empty line (header row)
+    let mut line_iter = lines.iter().enumerate();
+    let (header_idx, header_line) = line_iter.find(|(_, line)| !line.trim().is_empty())?;
+
+    // Parse headers by splitting on |
+    let headers: Vec<String> = header_line
+        .split('|')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    if headers.is_empty() || headers.iter().all(|h| h.is_empty()) {
+        return None;
+    }
+
+    // The next line should be the separator (contains ---)
+    let separator_idx = header_idx + 1;
+    if separator_idx >= lines.len() {
+        return None;
+    }
+
+    let separator_line = lines[separator_idx];
+    if !separator_line.contains("---") {
+        return None;
+    }
+
+    // Data starts after the separator
+    let data_start_index = separator_idx + 1;
+
+    Some((headers, data_start_index))
+}
+
+/// Parse a single data row from psql output.
+///
+/// Returns `None` for:
+/// - Empty lines
+/// - Footer lines (e.g., "(2 rows)")
+///
+/// The `column_count` parameter is accepted but not strictly enforced
+/// to match existing parse_psql behavior.
+pub fn parse_psql_line(line: &str, _column_count: usize) -> Option<Vec<String>> {
+    let trimmed = line.trim();
+
+    // Skip empty lines
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // Skip footer lines (e.g., "(2 rows)")
+    if trimmed.starts_with('(') && trimmed.ends_with(')') && trimmed.contains("row") {
+        return None;
+    }
+
+    // Parse row by splitting on |
+    let row: Vec<String> = line.split('|').map(|s| s.trim().to_string()).collect();
+
+    Some(row)
+}
+
 /// Parse psql output format into structured TableData.
 ///
 /// Expected format:
@@ -193,5 +263,56 @@ mod tests {
 
         let table = result.unwrap();
         assert_eq!(table.row_count(), 1);
+    }
+
+    #[test]
+    fn test_parse_psql_header_valid() {
+        let lines = vec![
+            " id | name  | age",
+            "----+-------+-----",
+            " 1  | Alice | 30",
+        ];
+
+        let result = parse_psql_header(&lines);
+        assert!(result.is_some());
+
+        let (headers, data_start_index) = result.unwrap();
+        assert_eq!(headers, vec!["id", "name", "age"]);
+        assert_eq!(data_start_index, 2);
+    }
+
+    #[test]
+    fn test_parse_psql_header_no_separator() {
+        let lines = vec![
+            " id | name  | age",
+            " 1  | Alice | 30",
+        ];
+
+        let result = parse_psql_header(&lines);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_psql_line_data_row() {
+        let line = " 1  | Alice | 30";
+        let result = parse_psql_line(line, 3);
+        assert!(result.is_some());
+
+        let row = result.unwrap();
+        assert_eq!(row, vec!["1", "Alice", "30"]);
+    }
+
+    #[test]
+    fn test_parse_psql_line_footer() {
+        let line = "(2 rows)";
+        let result = parse_psql_line(line, 3);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_psql_line_empty() {
+        let line = "   ";
+        let result = parse_psql_line(line, 3);
+        assert!(result.is_none());
     }
 }
