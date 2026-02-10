@@ -103,8 +103,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Streaming parser module + incremental parsing functions
-- [ ] 15-02-PLAN.md — Event loop integration, loading indicator, Ctrl+C cancellation
+- [x] 15-01-PLAN.md — Streaming parser module + incremental parsing functions
+- [x] 15-02-PLAN.md — Event loop integration, loading indicator, Ctrl+C cancellation
 
 ### Phase 16: Memory Optimization
 **Goal**: Reduce memory footprint for large datasets via compact storage
@@ -150,7 +150,7 @@ Plans:
 | 12. UI Layer Extraction | v1.3 | 2/2 | Complete | 2026-01-20 |
 | 13. Handlers & Cleanup | v1.3 | 2/2 | Complete | 2026-01-20 |
 | 14. Profiling Infrastructure | v1.4 | 3/3 | Complete | 2026-02-10 |
-| 15. Streaming Load | v1.4 | 0/2 | Not started | - |
+| 15. Streaming Load | v1.4 | 2/2 | Complete | 2026-02-10 |
 | 16. Memory Optimization | v1.4 | 0/TBD | Not started | - |
 | 17. Virtualized Rendering | v1.4 | 0/TBD | Not started | - |
 
