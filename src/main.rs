@@ -3,6 +3,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
+use sysinfo::{System, Pid, ProcessesToUpdate};
 use pretty_table_explorer::{db, export, handlers, parser, render, state, streaming, update, workspace};
 use handlers::{
     handle_export_filename, handle_export_format, handle_normal_mode, handle_query_input,
@@ -247,8 +248,27 @@ fn main() -> io::Result<()> {
     #[allow(unused_assignments)]
     let mut displayed_row_count = 0;
 
+    // Memory tracking
+    let mut sys = System::new();
+    let pid: Pid = sysinfo::get_current_pid().expect("Failed to get current PID");
+    let mut memory_mb: u64 = 0;
+    let mut frame_count: u64 = 0;
+    // Initial memory refresh
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    if let Some(process) = sys.process(pid) {
+        memory_mb = process.memory() / 1024 / 1024;
+    }
+
     // Main event loop
     loop {
+        // Refresh memory stats every ~30 frames (~1 second at ~30 FPS)
+        frame_count += 1;
+        if frame_count % 30 == 0 {
+            sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+            if let Some(process) = sys.process(pid) {
+                memory_mb = process.memory() / 1024 / 1024;
+            }
+        }
         // Poll streaming loader for new rows
         let had_streaming_loader = streaming_loader.is_some();
         if let Some(ref loader) = streaming_loader {
@@ -419,6 +439,13 @@ fn main() -> io::Result<()> {
         let input_buf = input_buffer.clone();
         let status = status_message.clone();
 
+        // Build memory display string
+        let mem_info = if memory_mb > 0 {
+            format!("Mem: {} MB ", memory_mb)
+        } else {
+            String::new()  // Don't show 0 MB before first refresh
+        };
+
         // Capture view modes for closure (per-tab view modes)
         let left_view_mode = workspace
             .tabs
@@ -571,7 +598,7 @@ fn main() -> io::Result<()> {
 
                 // Build and render controls hint at bottom
                 let controls = build_controls_hint(current_view, is_split, tab_count);
-                let controls_widget = Paragraph::new(format!("{}{}", status_info, controls))
+                let controls_widget = Paragraph::new(format!("{}{}{}", mem_info, status_info, controls))
                     .style(Style::default().fg(Color::DarkGray));
                 frame.render_widget(controls_widget, controls_area);
             } else {
@@ -630,8 +657,8 @@ fn main() -> io::Result<()> {
                     let controls = build_controls_hint(current_view, is_split, tab_count);
 
                     let title = format!(
-                        "{}{} {} {}{}{}",
-                        tab_bar, context_label, position, filter_info, status_info, controls
+                        "{}{} {} {}{}{}{}",
+                        tab_bar, context_label, position, filter_info, mem_info, status_info, controls
                     );
 
                     render_table_pane(
