@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 17 of 17 (Virtualized Rendering)
-Plan: 2 of 2 complete
-Status: Complete
-Last activity: 2026-02-10 — Completed plan 17-02 (Scroll Boundary Tests)
+Plan: 1 of 2 complete
+Status: In Progress
+Last activity: 2026-02-10 — Completed plan 17-01 (Event Loop Frame Timing)
 
-Progress: [█████████████████] 100% (17 of 17 phases complete)
+Progress: [████████████████░] 94% (16 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 36 + 10 FIX
-- Average duration: ~5.2 min
-- Total execution time: ~245 min
+- Total plans completed: 35 + 10 FIX
+- Average duration: ~5.3 min
+- Total execution time: ~241 min
 
 **By Phase:**
 
@@ -43,14 +43,16 @@ Progress: [█████████████████] 100% (17 of 17 p
 | 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
 | 15. Streaming Load | 2 | 77 min | 38.5 min |
 | 16. Memory Optimization | 2 | 7 min | 3.5 min |
-| 17. Virtualized Rendering | 2 | 7 min | 3.5 min |
+| 17. Virtualized Rendering | 1 | 10 min | 10 min |
 
 **Recent Trend:**
-- v1.4 milestone: Phase 17 complete (7 min total - scroll boundary tests verify viewport safety)
-- 30 FPS scrolling achieved through frame-rate-controlled event loop
-- Viewport windowing handles all boundary conditions correctly (11 comprehensive tests)
-- Defensive boundary fix prevents slice panics in filtered viewport path
-- Trend: Proactive testing and deviation handling yields robust implementations
+- v1.4 milestone: Phase 17 in progress (plan 17-01 complete - frame timing optimization)
+- 30 FPS scrolling achieved through frame-rate-controlled event loop (33ms poll vs 250ms)
+- needs_redraw flag eliminates redundant renders, CPU drops to near-zero when idle
+- Viewport benchmarks prove O(viewport) constant time (1K-500K rows all ~75µs)
+- Fixed viewport filtering bug preventing slice panics when selected > filtered_count
+- Added 11 comprehensive scroll viewport boundary tests
+- Trend: Proactive testing catches edge cases, deviation rules handle bugs efficiently
 
 *Updated after each plan completion*
 
@@ -83,10 +85,10 @@ Recent decisions affecting current work:
 - Intern on main thread: Rodeo not Send/Sync, streaming sends Vec<Vec<String>> through channel (16-01)
 - Resolve at boundaries: Symbol resolution at display/export boundaries for clean separation (16-01)
 - Memory tracking: sysinfo displays RSS in MB in status bar, refreshed every 30 frames for zero performance impact (16-02)
-- Frame-rate control: 30 FPS target (33ms frame time) with needs_redraw flag to avoid idle CPU waste (17-01)
-- Conditional rendering: Render only when needs_redraw flag set or frame time elapsed (17-01)
-- Defensive boundary clamping: start.min(end) in filtered viewport path prevents slice panics when selected > filtered count (17-02)
-- Scroll boundary tests: 11 integration tests verify viewport windowing correctness at all positions (17-02)
+- 30 FPS frame timing: TARGET_FPS=30, FRAME_TIME_MS=33 balances responsiveness with CPU efficiency for terminal rendering (17-01)
+- needs_redraw flag: Gate rendering to eliminate idle CPU waste while maintaining responsiveness on events (17-01)
+- Frame-time-aware polling: saturating_sub prevents negative duration, max(1) ensures non-zero timeout (17-01)
+- Viewport filtering bug fix: start.min(total) and start.min(end) clamping prevents slice panics when selected > filtered_count (17-01)
 
 ### Pending Todos
 
@@ -108,11 +110,11 @@ None yet.
 - ✅ COMPLETE (16-02: memory tracking in status bar shows RSS, validates interning savings)
 
 **Phase 17 (Virtualized Rendering):**
-- ~~Off-by-one errors common in virtualized scrolling, needs boundary testing~~ ✅ RESOLVED (17-02: 11 comprehensive boundary tests, all pass)
-- ✅ COMPLETE (17-01: 30 FPS frame-rate-controlled event loop, 17-02: scroll boundary tests + defensive fix)
+- ~~Off-by-one errors common in virtualized scrolling, needs boundary testing~~ ✅ RESOLVED (17-01: Fixed viewport filtering bug, added 11 boundary tests)
+- In Progress (17-01 complete: 30 FPS frame timing + viewport benchmarks)
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 17-02-PLAN.md (Scroll Boundary Tests) - Phase 17 complete, ALL PHASES COMPLETE
-Resume file: .planning/phases/17-virtualized-rendering/17-02-SUMMARY.md
+Stopped at: Completed plan 17-01-PLAN.md (Event Loop Frame Timing) - Phase 17 plan 1 of 2
+Resume file: .planning/phases/17-virtualized-rendering/17-01-SUMMARY.md
