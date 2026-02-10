@@ -87,9 +87,9 @@ Build an interactive terminal table viewer in Rust, starting with core rendering
 **Plans:** 3 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Library crate extraction, Cargo config, dhat profiling, panic hook
-- [ ] 14-02-PLAN.md — Criterion benchmarks (parsing, rendering, scrolling)
-- [ ] 14-03-PLAN.md — Integration tests (search, export, column operations)
+- [x] 14-01-PLAN.md — Library crate extraction, Cargo config, dhat profiling, panic hook
+- [x] 14-02-PLAN.md — Criterion benchmarks (parsing, rendering, scrolling)
+- [x] 14-03-PLAN.md — Integration tests (search, export, column operations)
 
 ### Phase 15: Streaming Load
 **Goal**: User sees data immediately while loading continues in background
@@ -148,7 +148,7 @@ Plans:
 | 11. Core Types Extraction | v1.3 | 1/1 | Complete | 2026-01-20 |
 | 12. UI Layer Extraction | v1.3 | 2/2 | Complete | 2026-01-20 |
 | 13. Handlers & Cleanup | v1.3 | 2/2 | Complete | 2026-01-20 |
-| 14. Profiling Infrastructure | v1.4 | 0/3 | Not started | - |
+| 14. Profiling Infrastructure | v1.4 | 3/3 | Complete | 2026-02-10 |
 | 15. Streaming Load | v1.4 | 0/TBD | Not started | - |
 | 16. Memory Optimization | v1.4 | 0/TBD | Not started | - |
 | 17. Virtualized Rendering | v1.4 | 0/TBD | Not started | - |
