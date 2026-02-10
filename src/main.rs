@@ -1,18 +1,9 @@
-mod column;
-mod db;
-mod export;
-mod handlers;
-mod parser;
-mod render;
-mod state;
-mod update;
-mod workspace;
-
 use std::cell::Cell as StdCell;
 use std::io::{self, Read};
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
+use pretty_table_explorer::{db, export, handlers, parser, render, state, update, workspace};
 use handlers::{
     handle_export_filename, handle_export_format, handle_normal_mode, handle_query_input,
     handle_search_input, KeyAction, WorkspaceOp,

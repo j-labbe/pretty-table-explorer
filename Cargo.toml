@@ -8,6 +8,10 @@ license = "MIT"
 repository = "https://github.com/j-labbe/pretty-table-explorer"
 readme = "README.md"
 
+[lib]
+name = "pretty_table_explorer"
+path = "src/lib.rs"
+
 [[bin]]
 name = "pte"
 path = "src/main.rs"
@@ -16,9 +20,22 @@ path = "src/main.rs"
 clap = { version = "4", features = ["derive"] }
 crossterm = { version = "0.28", features = ["use-dev-tty"] }
 csv = "1"
+dhat = { version = "0.3", optional = true }
 postgres = "0.19"
 ratatui = "0.29"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 ureq = { version = "2", features = ["json"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[features]
+dhat-heap = ["dhat"]
+
+[profile.release]
+debug = "line-tables-only"
+
+[profile.bench]
+debug = true

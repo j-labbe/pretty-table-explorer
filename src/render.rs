@@ -15,7 +15,7 @@ use std::cell::Cell as StdCell;
 
 /// Calculate auto-sized column widths from table data (raw values, no overrides).
 /// Returns width for each column sized to fit the maximum content width + 1 for padding.
-pub(crate) fn calculate_auto_widths(data: &TableData) -> Vec<u16> {
+pub fn calculate_auto_widths(data: &TableData) -> Vec<u16> {
     let num_cols = data.headers.len();
     let mut widths = vec![0usize; num_cols];
 
@@ -40,7 +40,7 @@ pub(crate) fn calculate_auto_widths(data: &TableData) -> Vec<u16> {
 /// Calculate column widths from table data.
 /// Returns a Constraint for each column sized to fit the maximum content width.
 /// If a ColumnConfig is provided, uses width overrides where set.
-pub(crate) fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<Constraint> {
+pub fn calculate_widths(data: &TableData, config: Option<&ColumnConfig>) -> Vec<Constraint> {
     let auto_widths = calculate_auto_widths(data);
 
     // Convert to Constraints, respecting config overrides
