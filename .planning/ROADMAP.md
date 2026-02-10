@@ -128,10 +128,11 @@ Plans:
   1. User experiences smooth scrolling (no lag) through 1.8M+ row datasets at 30+ FPS
   2. Render time remains constant regardless of dataset size (only visible rows rendered)
   3. Scroll position stays accurate at top, middle, and bottom of large datasets (no off-by-one errors)
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 17-01: TBD
+- [ ] 17-01-PLAN.md — Frame rate optimization (30 FPS event loop) + viewport render benchmarks
+- [ ] 17-02-PLAN.md — Scroll boundary integration tests + viewport correctness verification
 
 ## Progress
 
@@ -153,7 +154,7 @@ Plans:
 | 14. Profiling Infrastructure | v1.4 | 3/3 | Complete | 2026-02-10 |
 | 15. Streaming Load | v1.4 | 2/2 | Complete | 2026-02-10 |
 | 16. Memory Optimization | v1.4 | 2/2 | Complete | 2026-02-10 |
-| 17. Virtualized Rendering | v1.4 | 0/TBD | Not started | - |
+| 17. Virtualized Rendering | v1.4 | 0/2 | Not started | - |
 
 ## Domain Expertise
 
