@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 15 of 17 (Streaming Load)
-Plan: 1 of 2 complete
-Status: In Progress
-Last activity: 2026-02-10 — Completed plan 15-01 (Streaming Parser Foundation)
+Plan: 2 of 2 complete
+Status: Complete
+Last activity: 2026-02-10 — Completed plan 15-02 (Streaming Integration)
 
-Progress: [████████████░░░░░] 76% (13 of 17 phases complete)
+Progress: [█████████████░░░░] 82% (14 of 17 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31 + 10 FIX
-- Average duration: ~4.6 min
-- Total execution time: ~149 min
+- Total plans completed: 32 + 10 FIX
+- Average duration: ~5.3 min
+- Total execution time: ~224 min
 
 **By Phase:**
 
@@ -41,11 +41,11 @@ Progress: [████████████░░░░░] 76% (13 of 17 ph
 | 12. UI Layer Extraction | 2 | 5 min | 2.5 min |
 | 13. Handlers & Cleanup | 2 | 5 min | 2.5 min |
 | 14. Profiling Infrastructure | 3 | 21.3 min | 7.1 min |
-| 15. Streaming Load | 1 | 2 min | 2 min |
+| 15. Streaming Load | 2 | 77 min | 38.5 min |
 
 **Recent Trend:**
-- v1.4 milestone: Fast execution on foundational work (2 min for streaming architecture)
-- Trend: Infrastructure setup remains efficient
+- v1.4 milestone: Phase 15 complete (77 min total - 2 min architecture + 75 min integration/optimization)
+- Trend: Integration work takes longer due to verification and performance tuning
 
 *Updated after each plan completion*
 
@@ -71,6 +71,9 @@ Recent decisions affecting current work:
 - Unbounded channel: Memory pressure addressed in Phase 16, sender must never block (15-01)
 - Incremental parsing: parse_psql_header() and parse_psql_line() for line-by-line streaming (15-01)
 - Batch size 1000 rows: Balances channel overhead vs per-message memory (15-01)
+- Viewport-windowed rendering: Calculate widths only for visible rows + buffer (10k window) for O(1) frame cost (15-02)
+- Streaming event loop: Poll batch size 5000 rows to drain channel quickly (15-02)
+- Graceful cancellation: First Ctrl+C cancels load but keeps app running with partial data (15-02)
 
 ### Pending Todos
 
@@ -96,5 +99,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed plan 15-01-PLAN.md (Streaming Parser Foundation)
-Resume file: .planning/phases/15-streaming-load/15-01-SUMMARY.md
+Stopped at: Completed plan 15-02-PLAN.md (Streaming Integration) - Phase 15 complete
+Resume file: .planning/phases/15-streaming-load/15-02-SUMMARY.md
