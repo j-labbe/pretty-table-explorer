@@ -136,6 +136,13 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
+    // Early terminal initialization for piped stdin mode.
+    // On WSL2, crossterm's use-dev-tty feature requires /dev/tty to be initialized
+    // (raw mode + mouse capture) BEFORE the StreamingParser background thread locks stdin.
+    // Without this order, event::poll() fails to detect events from /dev/tty, causing
+    // mouse escape sequences to appear as visible text and the TUI to be non-interactive.
+    let mut early_terminal: Option<Terminal<CrosstermBackend<io::Stdout>>> = None;
+
     // Get table data, database client, initial view mode, and optional streaming loader from either database or stdin
     let (table_data, mut db_client, initial_view_mode, mut streaming_loader) =
         if let Some((conn_string, query, has_custom_query)) = db_config {
@@ -183,6 +190,16 @@ fn main() -> io::Result<()> {
                 print_usage();
             }
 
+            // Initialize terminal early, before StreamingParser locks stdin
+            init_panic_hook();
+            early_terminal = Some(match init_terminal() {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("Error: Failed to initialize terminal: {}", e);
+                    std::process::exit(1);
+                }
+            });
+
             // Use streaming parser for non-blocking stdin reading
             match streaming::StreamingParser::from_stdin() {
                 Ok(Some(loader)) => {
@@ -196,11 +213,17 @@ fn main() -> io::Result<()> {
                     (initial_data, None, ViewMode::PipeData, Some(loader))
                 }
                 Ok(None) => {
+                    if let Some(ref mut t) = early_terminal {
+                        let _ = restore_terminal(t);
+                    }
                     eprintln!("Error: Invalid or empty input. Expected psql table format.");
                     eprintln!("Usage: psql -c 'SELECT ...' | pretty-table-explorer");
                     std::process::exit(1);
                 }
                 Err(e) => {
+                    if let Some(ref mut t) = early_terminal {
+                        let _ = restore_terminal(t);
+                    }
                     eprintln!("Error reading stdin: {}", e);
                     std::process::exit(1);
                 }
@@ -241,10 +264,13 @@ fn main() -> io::Result<()> {
     // Export state
     let mut export_format: Option<export::ExportFormat> = None;
 
-    // Set up panic hook to restore terminal on crash
-    init_panic_hook();
-
-    let mut terminal = init_terminal()?;
+    // Use early-initialized terminal (stdin mode) or initialize now (DB mode)
+    let mut terminal = if let Some(t) = early_terminal {
+        t
+    } else {
+        init_panic_hook();
+        init_terminal()?
+    };
 
     // Track the count of displayed rows for navigation bounds
     #[allow(unused_assignments)]
